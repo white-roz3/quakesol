@@ -328,8 +328,10 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
+  // API resolution: explicit config wins; localhost dev uses the standalone
+  // backend on :4000; anywhere else the API is same-origin (single service).
   const isLocal = ["localhost", "127.0.0.1"].includes(location.hostname);
-  const API = (window.QUAKE_API || (isLocal ? "http://localhost:4000" : "")).replace(/\/$/, "");
+  const API = (window.QUAKE_API || (isLocal ? "http://localhost:4000" : location.origin)).replace(/\/$/, "");
   const M = window.QUAKE_MATCH;
   const test = new URLSearchParams(location.search).get("test") === "1";
   if (test) { M.timelimit = 1; M.bots = [{ name: "Sarge", skill: 1 }]; }
