@@ -27,7 +27,7 @@ body { font-family: "Share Tech Mono", monospace; color: var(--blood); overflow-
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background:
     radial-gradient(60% 30% at 50% 100%, rgba(160, 10, 5, .28), transparent 70%),
-    url("assets/emblem.png") center 38% / min(115vh, 125vw) no-repeat,
+    url("assets/emblem.png") center 68% / min(100vh, 112vw) no-repeat,
     #000;
   filter: brightness(.9);
 }
@@ -45,8 +45,10 @@ main { position: relative; z-index: 1; }
   min-height: 100vh; display: flex; flex-direction: column; align-items: center;
   padding: 4vh 18px 90px; text-align: center;
 }
-.logo { width: min(92vw, 900px); margin-bottom: 1.5vh; user-select: none; pointer-events: none;
-  filter: drop-shadow(0 0 34px rgba(255, 100, 20, .28)); }
+.logo { width: min(92vw, 900px); aspect-ratio: 21 / 9; object-fit: cover;
+  margin-bottom: 1.5vh; user-select: none; pointer-events: none;
+  mix-blend-mode: screen;
+  filter: contrast(1.18) brightness(.94) drop-shadow(0 0 34px rgba(255, 100, 20, .28)); }
 
 .menufont, .go, .menu-item, .gate h2, .debrief-title {
   font-family: "Anton", "Arial Narrow", sans-serif; text-transform: uppercase;
@@ -221,7 +223,9 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   <!-- IDENTIFY -->
   <section class="screen active" id="screen-identify">
     <div class="col">
-      <img class="logo" src="assets/logo.png" alt="QUAKESOL">
+      <video class="logo" autoplay muted loop playsinline poster="assets/logo.png" aria-label="QUAKESOL">
+        <source src="assets/logo.mp4" type="video/mp4">
+      </video>
       <div class="tag">Identify Yourself</div>
       <div class="gate">
         <h2>Pick a callsign<br>Wallet optional</h2>
@@ -261,7 +265,9 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   <!-- DEBRIEF -->
   <section class="screen" id="screen-debrief">
     <div class="col">
-      <img class="logo" src="assets/logo.png" alt="QUAKESOL">
+      <video class="logo" autoplay muted loop playsinline poster="assets/logo.png" aria-label="QUAKESOL">
+        <source src="assets/logo.mp4" type="video/mp4">
+      </video>
       <div class="debrief-title">// Match Report</div>
       <div class="bigscore"><span id="d-score">0</span><small>Frags</small></div>
       <div class="statrow">
