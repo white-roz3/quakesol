@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-<script src="quake-config.js"></script>
+<script src="/web/quake-config.js"></script>
 <style>
 :root {
   --blood: #d31111;
@@ -27,7 +27,7 @@ body { font-family: "Share Tech Mono", monospace; color: var(--blood); overflow-
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background:
     radial-gradient(60% 30% at 50% 100%, rgba(160, 10, 5, .28), transparent 70%),
-    url("assets/emblem.png") center 68% / min(100vh, 112vw) no-repeat,
+    url("/web/assets/emblem.png") center 68% / min(100vh, 112vw) no-repeat,
     #000;
   filter: brightness(.9);
 }
@@ -223,8 +223,8 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   <!-- IDENTIFY -->
   <section class="screen active" id="screen-identify">
     <div class="col">
-      <video class="logo" autoplay muted loop playsinline poster="assets/logo.png" aria-label="QUAKESOL">
-        <source src="assets/logo.mp4" type="video/mp4">
+      <video class="logo" autoplay muted loop playsinline poster="/web/assets/logo.png" aria-label="QUAKESOL">
+        <source src="/web/assets/logo.mp4" type="video/mp4">
       </video>
       <div class="tag">Identify Yourself</div>
       <div class="gate">
@@ -265,8 +265,8 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   <!-- DEBRIEF -->
   <section class="screen" id="screen-debrief">
     <div class="col">
-      <video class="logo" autoplay muted loop playsinline poster="assets/logo.png" aria-label="QUAKESOL">
-        <source src="assets/logo.mp4" type="video/mp4">
+      <video class="logo" autoplay muted loop playsinline poster="/web/assets/logo.png" aria-label="QUAKESOL">
+        <source src="/web/assets/logo.mp4" type="video/mp4">
       </video>
       <div class="debrief-title">// Match Report</div>
       <div class="bigscore"><span id="d-score">0</span><small>Frags</small></div>
