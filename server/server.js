@@ -24,6 +24,11 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
 // lets a single service host everything. Point it at the repo root so paths
 // match local dev: /web/... and /ioq3/build/Release/...
 const STATIC_DIR = process.env.STATIC_DIR || "";
+// When set, requests for game pk3s that are not on disk are 302-redirected to
+// `${PK3_REDIRECT}/<filename>` — lets the deploy bundle stay small while the
+// pk3s are served from a public CDN (e.g. raw.githubusercontent.com, which
+// sends CORS headers). Leave empty when the pk3s ship with the bundle.
+const PK3_REDIRECT = (process.env.PK3_REDIRECT || "").replace(/\/$/, "");
 
 const db = new DatabaseSync(DB_PATH);
 db.exec(`
@@ -111,7 +116,19 @@ const serveStatic = (res, urlPath, headOnly) => {
   if (p.endsWith("/")) p += "index.html";
   if (!STATIC_ALLOW.some((prefix) => p.startsWith(prefix))) return false;
   const file = join(STATIC_DIR, p);
-  if (!file.startsWith(normalize(STATIC_DIR)) || !existsSync(file) || !statSync(file).isFile()) return false;
+  if (!file.startsWith(normalize(STATIC_DIR))) return false;
+  if (!existsSync(file) || !statSync(file).isFile()) {
+    // pk3s may live on an external CDN instead of the deploy bundle
+    if (PK3_REDIRECT && /^\/ioq3\/build\/Release\/baseoa\/[a-zA-Z0-9._-]+\.pk3$/.test(p)) {
+      res.writeHead(302, {
+        Location: `${PK3_REDIRECT}/${p.split("/").pop()}`,
+        "Cache-Control": "public, max-age=31536000, immutable",
+      });
+      res.end();
+      return true;
+    }
+    return false;
+  }
   const ext = extname(file).toLowerCase();
   // big immutable game data gets long cache; html/js/config stays fresh
   const cache = [".pk3", ".wasm", ".data"].includes(ext) ? "public, max-age=31536000, immutable" : "no-cache";
