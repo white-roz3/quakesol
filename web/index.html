@@ -286,10 +286,10 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
         <div class="sigil"><img src="/web/assets/trident.png" alt=""></div>
         <div class="gate">
           <div class="tag">Identify Yourself</div>
-          <h2>Pick a callsign.<br><span>Wallet optional.</span></h2>
+          <h2>Pick a nametag.<br><span>Wallet optional.</span></h2>
           <div class="field">
-            <label for="f-name">Callsign</label>
-            <input id="f-name" maxlength="24" spellcheck="false" autocomplete="off" placeholder="Enter your callsign">
+            <label for="f-name">Nametag</label>
+            <input id="f-name" maxlength="24" spellcheck="false" autocomplete="off" placeholder="Enter your nametag">
           </div>
           <div class="field">
             <label for="f-wallet">Solana wallet — optional</label>
@@ -298,7 +298,7 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
           </div>
           <button class="go" id="btn-enter">Enter the Arena</button>
         </div>
-        <p class="smallprint">A callsign is all you need to fight. Add a wallet and your runs are scored on
+        <p class="smallprint">A nametag is all you need to fight. Add a wallet and your runs are scored on
           the live board and paid out — it's your <b>leaderboard identity</b> and your <b>payout address</b>.
           Nothing is charged and nothing is connected — the address is only pasted.</p>
       </div>
@@ -446,7 +446,7 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     try {
       const rows = await fetch(`${API}/api/leaderboard`).then(r => r.json());
       if (!rows.length) { $("lb-body").innerHTML = `<div class="lb-empty">NO RUNS YET THIS ROUND — BE FIRST</div>`; return; }
-      $("lb-body").innerHTML = `<table class="lb"><tr><th>#</th><th>Callsign</th><th>Wallet</th><th style="text-align:right">Frags</th></tr>` +
+      $("lb-body").innerHTML = `<table class="lb"><tr><th>#</th><th>Nametag</th><th>Wallet</th><th style="text-align:right">Frags</th></tr>` +
         rows.map((r, i) => `<tr><td class="rank">${String(i + 1).padStart(2, "0")}</td><td>${esc(r.name)}</td><td>${r.wallet ? esc(r.wallet.slice(0, 4) + "…" + r.wallet.slice(-4)) : "—"}</td><td class="score">${r.score}</td></tr>`).join("") + `</table>`;
     } catch { $("lb-body").innerHTML = `<div class="lb-empty">LEADERBOARD UNREACHABLE</div>`; }
   }
