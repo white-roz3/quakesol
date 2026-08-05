@@ -23,9 +23,32 @@ canvas { max-width: 100%; max-height: 100%; min-width: 100%; min-height: 100%; o
 #tfire { right: 26px; bottom: 30px; width: 96px; height: 96px; font-size: 14px; }
 #tjump { right: 136px; bottom: 58px; width: 72px; height: 72px; }
 #tweap { right: 40px; bottom: 140px; width: 64px; height: 64px; font-size: 11px; }
+
+/* ---- loading screen ---- */
+#q3load { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center;
+  background: #05060a; color: #dfe3e9;
+  font: 13px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .14em; }
+#q3load[hidden] { display: none; }
+#q3load .box { width: min(460px, 82vw); text-align: center; }
+#q3load .ttl { color: #ff2a1a; letter-spacing: .34em; text-transform: uppercase; margin-bottom: 18px;
+  text-shadow: 0 0 18px rgba(255,42,26,.45); }
+#q3load .bar { height: 10px; border: 1px solid #4c545e; background: #0a0c10; overflow: hidden; }
+#q3load .fill { height: 100%; width: 0; background: linear-gradient(90deg, #7e1602, #ff5a2b);
+  box-shadow: 0 0 18px rgba(255,90,43,.6); transition: width .2s ease; }
+#q3load .num { margin-top: 12px; color: #e7ebf1; }
+#q3load .sub { margin-top: 6px; font-size: 11px; color: #7d8590; letter-spacing: .1em; }
 </style>
 
 <canvas id=canvas></canvas>
+
+<div id=q3load>
+  <div class=box>
+    <div class=ttl>Loading Arena</div>
+    <div class=bar><div class=fill id=q3load-fill></div></div>
+    <div class=num id=q3load-num>Connecting…</div>
+    <div class=sub id=q3load-sub>First load only — the game data is cached afterwards</div>
+  </div>
+</div>
 
 <div id=touchui hidden>
   <div id=tstick><div id=tthumb></div></div>
@@ -40,6 +63,36 @@ canvas { max-width: 100%; max-height: 100%; min-width: 100%; min-height: 100%; o
 // Score bridge: the engine calls Q3Bridge.onEvent with match_start / score / match_end.
 // When embedded (e.g. by the lobby page), events are forwarded to the parent
 // via postMessage and the on-page debug overlay is hidden.
+// Loading screen. The engine needs a few hundred MB of game data before it can
+// show anything, so without this the canvas is simply black for minutes and the
+// game looks broken.
+window.Q3Loading = (() => {
+  const el = document.getElementById('q3load');
+  const fill = document.getElementById('q3load-fill');
+  const num = document.getElementById('q3load-num');
+  const sub = document.getElementById('q3load-sub');
+  const MB = (b) => (b / 1048576).toFixed(0);
+  let total = 0, loaded = 0, started = 0;
+  const post = (data) => { if (window.parent !== window) window.parent.postMessage({ source: 'q3', loading: data }, location.origin); };
+  const paint = (file) => {
+    const pct = total ? Math.min(100, (loaded / total) * 100) : 0;
+    fill.style.width = `${pct}%`;
+    num.textContent = total ? `${MB(loaded)} / ${MB(total)} MB — ${pct.toFixed(0)}%` : `${MB(loaded)} MB`;
+    const secs = (performance.now() - started) / 1000;
+    if (total && loaded && secs > 3) {
+      const eta = Math.max(0, ((total - loaded) / (loaded / secs)) / 60);
+      sub.textContent = eta > 1 ? `about ${eta.toFixed(0)} min left — cached after the first load`
+                                : `almost there — cached after the first load`;
+    }
+    post({ loaded, total, pct, file });
+  };
+  return {
+    begin(t) { total = t; loaded = 0; started = performance.now(); el.hidden = false; paint(); },
+    advance(n, file) { loaded += n; paint(file); },
+    done() { el.hidden = true; post({ loaded, total, pct: 100, done: true }); },
+  };
+})();
+
 window.Q3_EVENTS = [];
 const Q3_EMBEDDED = window.parent !== window;
 if (Q3_EMBEDDED) document.getElementById('q3events').style.display = 'none';
@@ -240,18 +293,49 @@ const modulePromise = ioquake3({
                     continue;
                 }
                 const files = config[gamedir].files;
-                const fetches = files.map(file => fetch(new URL(file.src, dataURL)));
+                // Ask for sizes up front so the loader can show real progress.
+                const sizes = await Promise.all(files.map(f =>
+                    fetch(new URL(f.src, dataURL), { method: 'HEAD' })
+                        .then(r => +r.headers.get('content-length') || 0).catch(() => 0)));
+                Q3Loading.begin(sizes.reduce((a, b) => a + b, 0));
+
+                // Sequential, streamed: fetching all of these at once buffers
+                // every file in memory simultaneously, which is a few hundred
+                // megabytes of peak usage and enough to sink a phone.
                 for (let i = 0; i < files.length; i++) {
-                    const response = await fetches[i];
+                    const response = await fetch(new URL(files[i].src, dataURL));
                     if (!response.ok) continue;
-                    const data = await response.arrayBuffer();
-                    let name = files[i].src.match(/[^/]+$/)[0];
-                    let dir = files[i].dst;
+                    const name = files[i].src.match(/[^/]+$/)[0];
+                    const dir = files[i].dst;
                     module.FS.mkdirTree(dir);
-                    module.FS.writeFile(`${dir}/${name}`, new Uint8Array(data));
+
+                    const expected = sizes[i];
+                    if (!response.body) {                       // no streams: fall back
+                        const buf = await response.arrayBuffer();
+                        module.FS.writeFile(`${dir}/${name}`, new Uint8Array(buf));
+                        Q3Loading.advance(expected || buf.byteLength, name);
+                        continue;
+                    }
+                    const reader = response.body.getReader();
+                    let chunks = [], received = 0;
+                    for (;;) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        chunks.push(value);
+                        received += value.length;
+                        Q3Loading.advance(value.length, name);
+                    }
+                    const data = new Uint8Array(received);
+                    let offset = 0;
+                    for (const c of chunks) { data.set(c, offset); offset += c.length; }
+                    chunks = null;                              // release before the FS copy
+                    module.FS.writeFile(`${dir}/${name}`, data);
+                    if (expected && received !== expected) Q3Loading.advance(expected - received, name);
                 }
             }
         } finally {
+            Q3Loading.done();   // must clear even if a fetch failed, or the
+                                // player is left staring at a stuck bar
             module.removeRunDependency('setup-ioq3-filesystem');
         }
     }],
