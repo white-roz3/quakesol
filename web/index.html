@@ -8,6 +8,13 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Michroma&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
+@font-face {
+  font-family: "Quake3";
+  src: url("/web/assets/quake.woff2") format("woff2");
+  font-display: swap;
+}
+</style>
+<style>
 :root {
   --red: #d31212;
   --red-hot: #ff2a1a;
@@ -19,6 +26,7 @@
   --steel-deep: #0a0c0f;
   --text: #dfe3e9;
   --mute: #7d8590;
+  --display: "Quake3", "Michroma", "Arial Narrow", sans-serif;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { height: 100%; background: #05060a; }
@@ -52,7 +60,7 @@ header {
 .mark { height: 34px; width: 36px; object-fit: contain;
   filter: drop-shadow(0 0 8px var(--red-glow)); }
 .wordmark {
-  font-family: "Michroma", sans-serif; font-size: 19px; letter-spacing: .18em;
+  font-family: var(--display); font-size: 19px; letter-spacing: .18em;
   color: var(--red); text-transform: uppercase;
   text-shadow: 0 0 16px var(--red-glow);
   margin-right: auto;
@@ -80,7 +88,7 @@ header {
 .chip b { font-weight: 400; color: var(--text); }
 nav { display: flex; gap: 10px; }
 nav button {
-  font-family: "Michroma", sans-serif; font-size: 11px; letter-spacing: .12em;
+  font-family: var(--display); font-size: 11px; letter-spacing: .12em;
   color: var(--text); text-transform: uppercase; cursor: pointer;
   background: none; padding: 4px 10px;
   border: 14px solid transparent; border-left-width: 26px; border-right-width: 26px;
@@ -112,7 +120,7 @@ main { position: relative; z-index: 10; }
 }
 .tag::after { content: "///////"; color: var(--chrome-lo); letter-spacing: .1em; margin-left: auto; }
 .gate h2 {
-  font-family: "Michroma", sans-serif; font-size: clamp(22px, 3.4vw, 34px); line-height: 1.3;
+  font-family: var(--display); font-size: clamp(22px, 3.4vw, 34px); line-height: 1.3;
   letter-spacing: .06em; text-transform: uppercase; color: var(--chrome-hi); margin-bottom: 26px;
   text-shadow: 0 2px 0 rgba(0, 0, 0, .8);
 }
@@ -135,7 +143,7 @@ main { position: relative; z-index: 10; }
 .field .hint.err { color: #ff6a5a; }
 .go {
   width: 100%; margin-top: 8px; padding: 6px 0; cursor: pointer; position: relative;
-  font-family: "Michroma", sans-serif; font-size: 14.5px; letter-spacing: .3em; text-indent: .3em;
+  font-family: var(--display); font-size: 14.5px; letter-spacing: .3em; text-indent: .3em;
   text-transform: uppercase; color: var(--chrome-hi);
   background: none;
   border: 26px solid transparent; border-left-width: 52px; border-right-width: 52px;
@@ -157,7 +165,7 @@ main { position: relative; z-index: 10; }
   clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px);
 }
 .hud .k { color: var(--mute); font-size: 10px; display: block; letter-spacing: .26em; text-transform: uppercase; }
-.hud b { font-family: "Michroma", sans-serif; color: var(--text); font-size: 16px; font-weight: 400; }
+.hud b { font-family: var(--display); color: var(--text); font-size: 16px; font-weight: 400; }
 .hud .frags b { color: var(--red-hot); text-shadow: 0 0 10px var(--red-glow); }
 .hud .timer b { color: var(--chrome-hi); }
 .hud-note {
@@ -173,19 +181,19 @@ main { position: relative; z-index: 10; }
 .debrief { width: min(640px, 96vw); }
 .debrief .inner { padding: 40px 44px; text-align: center; }
 .debrief-title {
-  font-family: "Michroma", sans-serif; font-size: 13px; letter-spacing: .4em;
+  font-family: var(--display); font-size: 13px; letter-spacing: .4em;
   color: var(--red); text-transform: uppercase; margin-bottom: 14px;
   text-shadow: 0 0 14px var(--red-glow);
 }
 .bigscore {
-  font-family: "Michroma", sans-serif; font-size: clamp(64px, 11vw, 100px); line-height: 1;
+  font-family: var(--display); font-size: clamp(64px, 11vw, 100px); line-height: 1;
   color: var(--chrome-hi); text-shadow: 0 0 30px var(--red-glow), 0 4px 0 #000;
 }
 .bigscore small { font-size: .18em; color: var(--red); letter-spacing: .34em; vertical-align: .9em; }
 .statrow { display: flex; justify-content: center; gap: 2px; margin: 26px 0 8px; }
 .statrow div { border: 1px solid var(--chrome-lo); background: rgba(5, 7, 10, .85); padding: 12px 22px; min-width: 118px; }
 .statrow .k { font-size: 10px; letter-spacing: .26em; color: var(--mute); display: block; text-transform: uppercase; margin-bottom: 5px; }
-.statrow b { font-family: "Michroma", sans-serif; font-size: 19px; color: var(--text); font-weight: 400; }
+.statrow b { font-family: var(--display); font-size: 19px; color: var(--text); font-weight: 400; }
 #submit-status { font-size: 12px; letter-spacing: .14em; margin: 18px 0 4px; color: var(--mute); min-height: 16px; text-transform: uppercase; }
 #submit-status.ok { color: var(--red-hot); text-shadow: 0 0 10px var(--red-glow); }
 #submit-status.err { color: #ff6a5a; }
@@ -200,7 +208,7 @@ main { position: relative; z-index: 10; }
 #rotate .phone::after { content: ""; position: absolute; left: 50%; bottom: 7px; width: 22px; height: 3px;
   background: var(--chrome-lo); transform: translateX(-50%); border-radius: 2px; }
 @keyframes tip { 0%, 45% { transform: rotate(0); } 65%, 100% { transform: rotate(-90deg); } }
-#rotate h3 { font-family: "Michroma", sans-serif; font-size: 15px; letter-spacing: .2em;
+#rotate h3 { font-family: var(--display); font-size: 15px; letter-spacing: .2em;
   color: var(--red); text-transform: uppercase; margin-bottom: 12px; text-shadow: 0 0 16px var(--red-glow); }
 #rotate p { font-size: 13px; color: var(--mute); letter-spacing: .08em; }
 
@@ -211,12 +219,12 @@ main { position: relative; z-index: 10; }
 .modal { width: min(680px, 94vw); max-height: 84vh; }
 .modal .inner { padding: 32px 38px; overflow-y: auto; max-height: calc(84vh - 6px); text-align: left; }
 .modal header2 { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 20px; }
-.modal h3 { font-family: "Michroma", sans-serif; font-size: 19px; letter-spacing: .16em;
+.modal h3 { font-family: var(--display); font-size: 19px; letter-spacing: .16em;
   text-transform: uppercase; color: var(--chrome-hi); }
 .modal .x { background: none; border: 1px solid var(--chrome-lo); color: var(--mute);
   font-family: inherit; font-size: 12px; padding: 6px 11px; cursor: pointer; letter-spacing: .1em; }
 .modal .x:hover { border-color: var(--red); color: var(--red-hot); }
-.modal h4 { font-family: "Michroma", sans-serif; font-size: 12px; letter-spacing: .3em;
+.modal h4 { font-family: var(--display); font-size: 12px; letter-spacing: .3em;
   color: var(--red); text-transform: uppercase; margin: 22px 0 10px; }
 .modal p, .modal li { font-size: 13.5px; line-height: 1.75; color: var(--text); }
 .modal ul { list-style: none; }
@@ -230,8 +238,8 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid var(--chrome-lo); font-weight: 400; }
 .lb td { padding: 10px; border-bottom: 1px solid rgba(76, 84, 94, .3); color: var(--text); }
 .lb tr:first-child td { color: var(--chrome-hi); }
-.lb td.rank { font-family: "Michroma", sans-serif; color: var(--red-hot); width: 46px; }
-.lb td.score { text-align: right; color: var(--red-hot); font-family: "Michroma", sans-serif; }
+.lb td.rank { font-family: var(--display); color: var(--red-hot); width: 46px; }
+.lb td.score { text-align: right; color: var(--red-hot); font-family: var(--display); }
 .lb-empty { font-size: 13px; color: var(--mute); padding: 26px 0 10px; text-align: center;
   letter-spacing: .14em; text-transform: uppercase; }
 
