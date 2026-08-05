@@ -260,6 +260,7 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   <img class="mark" src="/web/assets/trident.png" alt="">
   <div class="wordmark">Quakesol</div>
   <div class="round-pill offline" id="round-pill"><span class="dot"></span><span id="round-text">LOCAL MODE</span></div>
+  <button class="chip" id="btn-sound" title="Toggle menu music">♪ ON</button>
   <button class="chip" id="ca-chip" style="display:none" title="Copy contract address">CA <b id="ca-short"></b> ⧉</button>
   <a class="chip" id="x-chip" style="display:none" target="_blank" rel="noopener">𝕏 COMMUNITY</a>
   <nav>
@@ -324,6 +325,11 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     </div>
   </section>
 </main>
+
+<audio id="bgm" loop preload="metadata">
+  <source src="/web/assets/theme.webm" type="audio/webm">
+  <source src="/web/assets/theme.mp3" type="audio/mpeg">
+</audio>
 
 <!-- ROTATE GATE -->
 <div id="rotate">
@@ -444,7 +450,27 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     current = k;
     Object.entries(screens).forEach(([n, el]) => el.classList.toggle("active", n === k));
     checkOrientation();
+    syncAudio();
   };
+
+  // menu music: plays on the lobby/debrief screens, silent in the arena so it
+  // doesn't fight the game audio. Browsers block autoplay until the page has
+  // been interacted with, so the first gesture kicks it off.
+  const bgm = $("bgm");
+  bgm.volume = 0.4;
+  let muted = localStorage.getItem("qs_muted") === "1";
+  function syncAudio() {
+    $("btn-sound").textContent = muted ? "♪ OFF" : "♪ ON";
+    if (muted || current === "arena") { bgm.pause(); return; }
+    bgm.play().catch(() => {}); // rejected until the first gesture; retried below
+  }
+  $("btn-sound").onclick = () => {
+    muted = !muted;
+    localStorage.setItem("qs_muted", muted ? "1" : "0");
+    syncAudio();
+  };
+  addEventListener("pointerdown", syncAudio, { once: true });
+  addEventListener("keydown", syncAudio, { once: true });
 
   // the arena needs landscape on touch devices — prompt to rotate otherwise
   const isTouch = matchMedia("(pointer: coarse)").matches || "ontouchstart" in window;

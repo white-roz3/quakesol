@@ -105,6 +105,9 @@ const MIME = {
   ".jpg": "image/jpeg",
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon",
+  ".woff2": "font/woff2",
+  ".mp3": "audio/mpeg",
+  ".webm": "audio/webm",
 };
 // Only these path prefixes are ever served — the STATIC_DIR may be the repo
 // root, which also holds the database and server code.
