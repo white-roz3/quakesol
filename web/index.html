@@ -100,9 +100,13 @@ nav button:hover { color: var(--red-hot); text-shadow: 0 0 12px var(--red-glow);
 main { position: relative; z-index: 10; }
 .screen { display: none; }
 .screen.active { display: block; }
+/* flex + margin:auto centres but still allows scrolling when the panel is
+   taller than a short widescreen viewport (align-items:center would clip it) */
+#screen-identify.active, #screen-debrief.active { display: flex; justify-content: center; }
+#screen-identify.active > *, #screen-debrief.active > * { margin: auto; }
 
 /* ---------- identify ---------- */
-#screen-identify { min-height: calc(100vh - 62px); display: grid; place-items: center; padding: 5vh 16px; }
+#screen-identify { min-height: calc(100svh - 62px); padding: 5vh 16px; }
 .panel { width: min(880px, 96vw); }
 .panel .inner { display: grid; grid-template-columns: 220px 1fr; gap: 0; padding: 34px; }
 .sigil {
@@ -157,6 +161,11 @@ main { position: relative; z-index: 10; }
 
 /* ---------- arena ---------- */
 #screen-arena { position: relative; height: calc(100vh - 62px); }
+/* on phones/tablets the arena takes the whole screen: the header wraps at
+   narrow widths, which otherwise left the canvas mis-sized in landscape */
+@media (pointer: coarse) {
+  #screen-arena.active { position: fixed; inset: 0; height: 100svh; z-index: 60; }
+}
 #gameframe { width: 100%; height: 100%; border: 0; display: block; background: #000; }
 .hud {
   position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
@@ -177,7 +186,7 @@ main { position: relative; z-index: 10; }
 .hud-note.gone { opacity: 0; }
 
 /* ---------- debrief ---------- */
-#screen-debrief { min-height: calc(100vh - 62px); display: grid; place-items: center; padding: 5vh 16px; }
+#screen-debrief { min-height: calc(100svh - 62px); padding: 5vh 16px; }
 .debrief { width: min(640px, 96vw); }
 .debrief .inner { padding: 40px 44px; text-align: center; }
 .debrief-title {
@@ -469,18 +478,32 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     localStorage.setItem("qs_muted", muted ? "1" : "0");
     syncAudio();
   };
-  addEventListener("pointerdown", syncAudio, { once: true });
-  addEventListener("keydown", syncAudio, { once: true });
+  // Mobile browsers reject the first play() and iOS often needs the call to
+  // come from a touch handler, so retry on every gesture until it sticks.
+  const UNLOCK = ["pointerdown", "touchend", "click", "keydown"];
+  function unlockAudio() {
+    if (muted || current === "arena") return;
+    bgm.play().then(() => UNLOCK.forEach(e => removeEventListener(e, unlockAudio))).catch(() => {});
+  }
+  UNLOCK.forEach(e => addEventListener(e, unlockAudio));
 
   // the arena needs landscape on touch devices — prompt to rotate otherwise
   const isTouch = matchMedia("(pointer: coarse)").matches || "ontouchstart" in window;
   function checkOrientation() {
     const portrait = innerHeight > innerWidth;
-    $("rotate").classList.toggle("on", isTouch && portrait && current === "arena");
+    const blocked = isTouch && portrait && current === "arena";
+    $("rotate").classList.toggle("on", blocked);
+    if (current !== "arena") return;
+    if (!blocked && pendingBoot) bootEngine();          // rotated -> start for real
+    else if (!blocked) {
+      // already running: nudge the engine so its canvas picks up the new size
+      try { $("gameframe").contentWindow.dispatchEvent(new Event("resize")); } catch {}
+    }
   }
   addEventListener("resize", checkOrientation);
   addEventListener("orientationchange", checkOrientation);
-  let run = null; // current run state
+  let run = null;          // current run state
+  let pendingBoot = false; // engine waiting for landscape before it boots
 
   $("btn-enter").onclick = () => {
     const name = nameEl.value.trim();
@@ -514,9 +537,11 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   };
   const stopPings = () => { if (pingTimer) { clearInterval(pingTimer); pingTimer = null; } };
 
-  function startMatch(name, wallet) {
-    run = { name, wallet, score: 0, deaths: 0, map: M.map, startedAt: Date.now(), botsAdded: false, ended: false };
-    startPings(name);
+  // The engine sizes its canvas once at boot, so starting it in portrait left a
+  // mis-sized context that never recovered on rotate. Boot is deferred until
+  // the device is actually in landscape.
+  function bootEngine() {
+    pendingBoot = false;
     const args = [
       `%2bset%20bot_minplayers%20${M.players}`,
       `%2bset%20g_spSkill%20${M.botSkill}`,
@@ -525,6 +550,13 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
       `%2bmap%20${M.map}`,
     ].join("%20");
     $("gameframe").src = `${window.QUAKE_ENGINE}?com_basegame=${M.basegame}&args=${args}`;
+  }
+
+  function startMatch(name, wallet) {
+    run = { name, wallet, score: 0, deaths: 0, map: M.map, startedAt: Date.now(), botsAdded: false, ended: false };
+    startPings(name);
+    $("gameframe").src = "about:blank";
+    pendingBoot = true;
     $("hud-score").textContent = "0"; $("hud-deaths").textContent = "0";
     $("hud-rank").textContent = "—"; $("hud-map").textContent = M.map;
     $("hud-note").classList.remove("gone");
