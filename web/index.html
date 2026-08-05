@@ -159,6 +159,46 @@ main { position: relative; z-index: 10; }
 .smallprint { grid-column: 1 / -1; margin-top: 26px; font-size: 12.5px; line-height: 1.8; color: var(--mute); text-align: center; }
 .smallprint b { color: var(--red); font-weight: 400; }
 
+/* ---------- campaign ---------- */
+#screen-campaign { min-height: calc(100svh - 62px); padding: 5vh 16px; }
+#screen-campaign.active { display: flex; justify-content: center; }
+#screen-campaign.active > * { margin: auto; }
+.campaign { width: min(960px, 96vw); }
+.campaign .inner { padding: 30px 34px; }
+.camp-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+  border-bottom: 1px solid var(--chrome-lo); padding-bottom: 16px; margin-bottom: 20px; }
+.camp-head h2 { font-family: var(--display); font-size: clamp(18px, 2.6vw, 26px);
+  text-transform: uppercase; color: var(--chrome-hi); letter-spacing: .06em; }
+.camp-stat { display: flex; align-items: baseline; gap: 10px; }
+.camp-stat .k { font-size: 10px; letter-spacing: .24em; color: var(--mute); text-transform: uppercase; }
+.camp-stat b { font-family: var(--display); font-size: 22px; color: var(--red);
+  text-shadow: 0 0 14px var(--red-glow); font-weight: 400; margin-right: 8px; }
+.tiers { display: flex; flex-direction: column; gap: 14px; max-height: 52vh; overflow-y: auto; padding-right: 6px; }
+.tier { border: 1px solid var(--chrome-lo); background: rgba(5, 7, 10, .6); padding: 12px 14px;
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px); }
+.tier.locked { opacity: .42; }
+.tier-label { display: flex; align-items: center; gap: 10px; font-size: 11px; letter-spacing: .26em;
+  color: var(--mute); text-transform: uppercase; margin-bottom: 10px; }
+.tier-label b { font-family: var(--display); color: var(--red); font-weight: 400; letter-spacing: .1em; }
+.tier.locked .tier-label b { color: var(--mute); text-shadow: none; }
+.tier-label .done { margin-left: auto; color: var(--chrome); letter-spacing: .1em; }
+.arenas { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.arena-btn { text-align: left; font-family: inherit; font-size: 13px; color: var(--text); cursor: pointer;
+  background: linear-gradient(180deg, rgba(30, 34, 41, .85), rgba(12, 14, 18, .85));
+  border: 1px solid var(--chrome-lo); padding: 10px 12px; position: relative;
+  clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+  transition: border-color .15s, color .15s; }
+.arena-btn:hover:not(:disabled) { border-color: var(--red); color: #fff; }
+.arena-btn:disabled { cursor: not-allowed; color: var(--mute); }
+.arena-btn .meta { display: block; font-size: 10.5px; color: var(--mute); letter-spacing: .1em;
+  text-transform: uppercase; margin-top: 5px; }
+.arena-btn.cleared { border-color: rgba(211, 18, 18, .55); }
+.arena-btn.cleared::after { content: "✓"; position: absolute; top: 8px; right: 10px; color: var(--red);
+  text-shadow: 0 0 10px var(--red-glow); }
+.camp-foot { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+  border-top: 1px solid var(--chrome-lo); margin-top: 18px; padding-top: 16px; }
+@media (max-width: 620px) { .campaign .inner { padding: 22px 18px; } .tiers { max-height: none; } }
+
 /* ---------- arena ---------- */
 #screen-arena { position: relative; height: calc(100vh - 62px); }
 /* on phones/tablets the arena takes the whole screen: the header wraps at
@@ -301,6 +341,29 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
         <p class="smallprint">A nametag is all you need to fight. Add a wallet and your runs are scored on
           the live board and paid out — it's your <b>leaderboard identity</b> and your <b>payout address</b>.
           Nothing is charged and nothing is connected — the address is only pasted.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CAMPAIGN -->
+  <section class="screen" id="screen-campaign">
+    <div class="campaign chromeframe">
+      <div class="inner">
+        <div class="camp-head">
+          <div>
+            <div class="tag" style="margin:0 0 6px">Campaign</div>
+            <h2 id="camp-who">Marine</h2>
+          </div>
+          <div class="camp-stat">
+            <span class="k">Tier</span><b id="camp-tier">1</b>
+            <span class="k">Cleared</span><b id="camp-cleared">0</b>
+          </div>
+        </div>
+        <div id="camp-tiers" class="tiers"></div>
+        <div class="camp-foot">
+          <button class="chip" id="btn-quick">Quick match — 5 min deathmatch</button>
+          <button class="chip" id="btn-signout">Change nametag</button>
+        </div>
       </div>
     </div>
   </section>
@@ -453,7 +516,8 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
   // ---------- game lifecycle ----------
-  const screens = { identify: $("screen-identify"), arena: $("screen-arena"), debrief: $("screen-debrief") };
+  const screens = { identify: $("screen-identify"), campaign: $("screen-campaign"),
+                    arena: $("screen-arena"), debrief: $("screen-debrief") };
   let current = "identify";
   const show = (k) => {
     current = k;
@@ -520,8 +584,63 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     $("wallet-hint").classList.remove("err");
     localStorage.setItem("qs_name", name);
     localStorage.setItem("qs_wallet", wallet);
-    startMatch(name, wallet);
+    player = { name, wallet };
+    openCampaign();
   };
+
+  // ---------- campaign ladder ----------
+  let player = { name: localStorage.getItem("qs_name") || "", wallet: localStorage.getItem("qs_wallet") || "" };
+  let ladder = null;                       // [{tier, arenas:[...]}, ...]
+  let progress = { tier: 1, cleared: [], clearedCount: 0 };
+
+  const loadLadder = async () => ladder ||
+    (ladder = await fetch(`/web/assets/campaign.json?v=${Date.now()}`).then(r => r.json()).catch(() => []));
+
+  async function fetchProgress() {
+    if (!API || !player.name) return;
+    const q = player.wallet ? `wallet=${encodeURIComponent(player.wallet)}` : `name=${encodeURIComponent(player.name)}`;
+    try {
+      const r = await fetch(`${API}/api/progress?${q}`);
+      const body = r.ok ? await r.json() : null;
+      // never let an error body through: a missing tier would unlock everything
+      if (body && Number.isInteger(body.tier)) progress = body;
+    } catch {}
+  }
+
+  async function openCampaign() {
+    await Promise.all([loadLadder(), fetchProgress()]);
+    renderCampaign();
+    show("campaign");
+  }
+
+  function renderCampaign() {
+    $("camp-who").textContent = player.name || "Marine";
+    $("camp-tier").textContent = `${progress.tier}/${ladder.length || 8}`;
+    $("camp-cleared").textContent = `${progress.clearedCount || 0}/${ladder.reduce((n, t) => n + t.arenas.length, 0)}`;
+    const done = new Set(progress.cleared || []);
+    $("camp-tiers").innerHTML = ladder.map(t => {
+      const locked = t.tier > progress.tier;
+      const cleared = t.arenas.filter(a => done.has(a.map)).length;
+      return `<div class="tier${locked ? " locked" : ""}">
+        <div class="tier-label"><b>Tier ${t.tier}</b>${locked ? "— locked" : ""}
+          <span class="done">${cleared}/${t.arenas.length} cleared</span></div>
+        <div class="arenas">${t.arenas.map(a => `
+          <button class="arena-btn${done.has(a.map) ? " cleared" : ""}" ${locked ? "disabled" : ""}
+                  data-map="${a.map}" data-tier="${t.tier}">${esc(a.name)}
+            <span class="meta">${a.bots.length} bot${a.bots.length > 1 ? "s" : ""} · ${a.fraglimit} frags</span>
+          </button>`).join("")}</div>
+      </div>`;
+    }).join("");
+    $("camp-tiers").querySelectorAll(".arena-btn:not([disabled])").forEach(b => {
+      b.onclick = () => {
+        const t = ladder.find(x => x.tier === +b.dataset.tier);
+        startMatch(t.arenas.find(a => a.map === b.dataset.map), t.tier);
+      };
+    });
+  }
+
+  $("btn-quick").onclick = () => startMatch(null, null);
+  $("btn-signout").onclick = () => show("identify");
 
   // presence: ping the backend while in the arena so the round pill shows live players
   let pingTimer = null;
@@ -542,23 +661,28 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   // the device is actually in landscape.
   function bootEngine() {
     pendingBoot = false;
-    const args = [
-      `%2bset%20bot_minplayers%20${M.players}`,
-      `%2bset%20g_spSkill%20${M.botSkill}`,
-      `%2btimelimit%20${M.timelimit}`,
-      `%2bfraglimit%20${M.fraglimit}`,
-      `%2bmap%20${M.map}`,
-    ].join("%20");
+    const a = run.arena;
+    // campaign arenas bring their own bot roster and frag limit; a quick match
+    // just fills the arena with bot_minplayers on the configured map.
+    const args = (a
+      ? [`%2bset%20bot_minplayers%20${a.bots.length + 1}`, `%2bset%20g_spSkill%20${M.botSkill}`,
+         `%2btimelimit%20${M.timelimit}`, `%2bfraglimit%20${a.fraglimit}`, `%2bmap%20${a.map}`]
+      : [`%2bset%20bot_minplayers%20${M.players}`, `%2bset%20g_spSkill%20${M.botSkill}`,
+         `%2btimelimit%20${M.timelimit}`, `%2bfraglimit%20${M.fraglimit}`, `%2bmap%20${M.map}`]
+    ).join("%20");
     $("gameframe").src = `${window.QUAKE_ENGINE}?com_basegame=${M.basegame}&args=${args}`;
   }
 
-  function startMatch(name, wallet) {
-    run = { name, wallet, score: 0, deaths: 0, map: M.map, startedAt: Date.now(), botsAdded: false, ended: false };
-    startPings(name);
+  // arena === null runs a quick deathmatch; otherwise it is a campaign arena
+  function startMatch(arena, tier) {
+    const map = arena ? arena.map : M.map;
+    run = { name: player.name, wallet: player.wallet, arena, tier, map,
+            score: 0, deaths: 0, startedAt: Date.now(), ended: false };
+    startPings(player.name);
     $("gameframe").src = "about:blank";
     pendingBoot = true;
     $("hud-score").textContent = "0"; $("hud-deaths").textContent = "0";
-    $("hud-rank").textContent = "—"; $("hud-map").textContent = M.map;
+    $("hud-rank").textContent = "—"; $("hud-map").textContent = arena ? arena.name : map;
     $("hud-note").classList.remove("gone");
     setTimeout(() => $("hud-note").classList.add("gone"), 12000);
     show("arena");
@@ -582,7 +706,9 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
       $("hud-score").textContent = e.score; $("hud-deaths").textContent = e.deaths;
       $("hud-rank").textContent = e.rank;
     } else if (e.type === "match_end") {
+      // finishing first clears a campaign arena — the engine reports final rank
       run.ended = true; run.score = e.score; run.deaths = e.deaths; run.map = e.map;
+      run.won = e.rank === 1;
       finishRun(e);
     }
   });
@@ -591,7 +717,13 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     $("d-score").textContent = e.score;
     $("d-deaths").textContent = e.deaths;
     $("d-net").textContent = e.score - e.deaths;
-    $("d-map").textContent = e.map;
+    $("d-map").textContent = run.arena ? run.arena.name : e.map;
+    const title = run.arena
+      ? (run.won ? `// Tier ${run.tier} — ${esc(run.arena.name)} cleared`
+                 : `// Tier ${run.tier} — ${esc(run.arena.name)} failed`)
+      : "// Match Report";
+    document.querySelector(".debrief-title").innerHTML = title;
+    $("btn-again").textContent = run.arena ? "Back to Campaign" : "Run It Back";
     show("debrief");
     $("gameframe").src = "about:blank";
     stopPings();
@@ -603,15 +735,26 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: run.name, wallet: run.wallet || null, score: e.score, deaths: e.deaths,
-          map: e.map, serverTime: e.serverTime, startedAt: run.startedAt, endedAt: Date.now(),
+          map: run.arena ? run.arena.map : e.map, won: !!run.won,
+          serverTime: e.serverTime, startedAt: run.startedAt, endedAt: Date.now(),
         }),
       });
       if (!res.ok) throw new Error(res.status);
-      st.textContent = "RUN POSTED TO THE BOARD ✓"; st.className = "ok";
+      const body = await res.json().catch(() => ({}));
+      if (body.progress) {
+        const before = progress.tier;
+        progress = body.progress;
+        st.textContent = progress.tier > before
+          ? `TIER ${progress.tier} UNLOCKED ✓`
+          : "ARENA CLEARED — RUN POSTED ✓";
+      } else {
+        st.textContent = "RUN POSTED TO THE BOARD ✓";
+      }
+      st.className = "ok";
     } catch { st.textContent = "SUBMIT FAILED — BOARD UNREACHABLE"; st.className = "err"; }
   }
 
-  $("btn-again").onclick = () => startMatch(run.name, run.wallet);
+  $("btn-again").onclick = () => run.arena ? openCampaign() : startMatch(null, null);
 })();
 </script>
 </body>

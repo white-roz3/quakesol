@@ -12,7 +12,7 @@
 
 import { createServer } from "node:http";
 import { DatabaseSync } from "node:sqlite";
-import { createReadStream, existsSync, statSync } from "node:fs";
+import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
 
 const PORT = Number(process.env.PORT || 4000);
@@ -46,17 +46,60 @@ db.exec(`
     created_at INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_runs_round ON runs(round);
+
+  -- campaign: one row per arena an identity has beaten. Progression is derived
+  -- from these rather than stored, so it can't drift out of sync.
+  CREATE TABLE IF NOT EXISTS clears (
+    identity TEXT NOT NULL,
+    map TEXT NOT NULL,
+    tier INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    wallet TEXT,
+    round INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (identity, map)
+  );
+  CREATE INDEX IF NOT EXISTS idx_clears_identity ON clears(identity);
 `);
+
+// The campaign ladder is defined once in web/assets/campaign.json (generated
+// from OpenArena's scripts/arenas.txt) and read here so the client and server
+// can never disagree about tier sizes.
+const LADDER = JSON.parse(readFileSync(new URL("../web/assets/campaign.json", import.meta.url), "utf8"));
+const TIER_SIZES = LADDER.reduce((acc, t) => (acc[t.tier] = t.arenas.length, acc), {});
+const TIER_OF_MAP = new Map(LADDER.flatMap(t => t.arenas.map(a => [a.map, t.tier])));
+const MAX_TIER = Math.max(...LADDER.map(t => t.tier));
 
 const insertRun = db.prepare(`
   INSERT INTO runs (round, identity, name, wallet, score, deaths, map, duration_ms, ip, created_at)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
+const insertClear = db.prepare(`
+  INSERT OR IGNORE INTO clears (identity, map, tier, name, wallet, round, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
+`);
+const clearsFor = db.prepare(`SELECT map, tier FROM clears WHERE identity = ?`);
+
+// unlocked tier = 1 + every consecutive tier the player has fully cleared
+function unlockedTier(rows) {
+  const per = {};
+  for (const r of rows) per[r.tier] = (per[r.tier] || 0) + 1;
+  let tier = 1;
+  while (tier <= MAX_TIER && TIER_SIZES[tier] && per[tier] >= TIER_SIZES[tier]) tier++;
+  return Math.min(tier, MAX_TIER);
+}
+
+// Round board: deepest tier cleared this round wins, frags break the tie.
 const bestPerIdentity = db.prepare(`
-  SELECT name, wallet, MAX(score) AS score, MIN(deaths) AS deaths, COUNT(*) AS runs
-  FROM runs WHERE round = ?
-  GROUP BY identity
-  ORDER BY score DESC, deaths ASC, MIN(created_at) ASC
+  SELECT r.name, r.wallet,
+         MAX(r.score) AS score,
+         MIN(r.deaths) AS deaths,
+         COUNT(*) AS runs,
+         COALESCE((SELECT MAX(c.tier) FROM clears c
+                   WHERE c.identity = r.identity AND c.round = ?), 0) AS tier
+  FROM runs r WHERE r.round = ?
+  GROUP BY r.identity
+  ORDER BY tier DESC, score DESC, deaths ASC, MIN(r.created_at) ASC
   LIMIT 50
 `);
 
@@ -170,16 +213,29 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { round: n, playing: playingCount(), endsAt: roundEndsAt(n), timeLeftMs: roundEndsAt(n) - Date.now() });
     }
 
+    // permanent campaign progression for one identity
+    if (req.method === "GET" && url.pathname === "/api/progress") {
+      const wallet = url.searchParams.get("wallet") || "";
+      const name = (url.searchParams.get("name") || "").trim();
+      if (!wallet && !name) return json(res, 400, { error: "name or wallet required" });
+      const identity = wallet && BASE58.test(wallet) ? wallet : `name:${name.toLowerCase()}`;
+      const rows = clearsFor.all(identity);
+      return json(res, 200, {
+        identity, tier: unlockedTier(rows), maxTier: MAX_TIER,
+        cleared: rows.map(r => r.map), clearedCount: rows.length,
+      });
+    }
+
     if (req.method === "GET" && url.pathname === "/api/leaderboard") {
       const n = Number(url.searchParams.get("round")) || currentRound();
-      return json(res, 200, bestPerIdentity.all(n));
+      return json(res, 200, bestPerIdentity.all(n, n));
     }
 
     // final standings for a finished round (payout input)
     if (req.method === "GET" && /^\/api\/round\/\d+\/results$/.test(url.pathname)) {
       const n = Number(url.pathname.split("/")[3]);
       if (n >= currentRound()) return json(res, 409, { error: "round not finished" });
-      return json(res, 200, { round: n, endedAt: roundEndsAt(n), standings: bestPerIdentity.all(n) });
+      return json(res, 200, { round: n, endedAt: roundEndsAt(n), standings: bestPerIdentity.all(n, n) });
     }
 
     if (req.method === "POST" && url.pathname === "/api/ping") {
@@ -207,8 +263,18 @@ const server = createServer(async (req, res) => {
       const identity = wallet ?? `name:${name.toLowerCase()}`;
       const round = currentRound();
       insertRun.run(round, identity, name, wallet, score, deaths, map, Math.round(duration), ip, Date.now());
+
+      // a won campaign arena unlocks progress permanently. The tier comes from
+      // the ladder, never from the client, so a forged tier can't skip ahead.
+      const tier = TIER_OF_MAP.get(map);
+      let progress = null;
+      if (b.won === true && tier) {
+        insertClear.run(identity, map, tier, name, wallet, round, Date.now());
+        const rows = clearsFor.all(identity);
+        progress = { tier: unlockedTier(rows), cleared: rows.map(r => r.map), clearedCount: rows.length };
+      }
       pings.set(name, Date.now());
-      return json(res, 201, { ok: true, round });
+      return json(res, 201, { ok: true, round, progress });
     }
 
     if ((req.method === "GET" || req.method === "HEAD") && STATIC_DIR && serveStatic(res, url.pathname, req.method === "HEAD")) return;
