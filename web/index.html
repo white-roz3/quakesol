@@ -284,6 +284,24 @@ body.playing header { display: none; }
 .modal li b { color: var(--red); font-weight: 400; }
 .modal kbd { background: #0a0c10; border: 1px solid var(--chrome-lo); border-bottom-width: 3px;
   padding: 1px 7px; font-size: 12px; color: var(--chrome-hi); font-family: inherit; }
+table.binds { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 6px; }
+.binds td { padding: 7px 8px; border-bottom: 1px solid rgba(76, 84, 94, .3); color: var(--text); }
+.binds td.act { color: var(--mute); text-transform: uppercase; letter-spacing: .16em; font-size: 11px; }
+.binds td.keycell { text-align: right; width: 40%; }
+.bindbtn { font-family: inherit; font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text); background: rgba(6, 8, 11, .8); border: 1px solid var(--chrome-lo);
+  padding: 6px 12px; cursor: pointer; min-width: 96px;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+.bindbtn:hover { border-color: var(--red); color: #fff; }
+.bindbtn.listening { border-color: var(--red-hot); color: var(--red-hot);
+  box-shadow: 0 0 14px var(--red-glow); }
+.ctl-row { display: flex; align-items: center; gap: 14px; padding: 8px 0;
+  border-bottom: 1px solid rgba(76, 84, 94, .22); }
+.ctl-row label { flex: 1; font-size: 13px; color: var(--text); }
+.ctl-row label b { color: var(--red); font-weight: 400; margin-left: 6px; }
+.ctl-row input[type=range] { width: 46%; accent-color: #d31212; }
+.ctl-row input[type=checkbox] { width: 18px; height: 18px; accent-color: #d31212; }
+.hint-line { font-size: 11px; color: var(--mute); letter-spacing: .08em; }
 table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .lb th { text-align: left; font-size: 10px; letter-spacing: .26em; color: var(--mute);
   text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid var(--chrome-lo); font-weight: 400; }
@@ -316,6 +334,7 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   <a class="chip" id="x-chip" style="display:none" target="_blank" rel="noopener">𝕏 COMMUNITY</a>
   <nav>
     <button id="btn-leaderboard">Leaderboard</button>
+    <button id="btn-controls">Controls</button>
     <button id="btn-howto">How to Play</button>
   </nav>
 </header>
@@ -424,6 +443,58 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   </div>
 </div>
 
+<!-- CONTROLS MODAL -->
+<div class="modal-back" id="modal-controls">
+  <div class="modal chromeframe">
+    <div class="inner">
+      <header2><h3>Controls</h3><button class="x" data-close="modal-controls">CLOSE ✕</button></header2>
+
+      <h4>Keyboard &amp; Mouse</h4>
+      <table class="binds" id="bind-table"></table>
+      <p class="hint-line">Click a key, then press the one you want. <kbd>Esc</kbd> cancels.</p>
+
+      <h4>Aiming</h4>
+      <div class="ctl-row">
+        <label for="c-sens">Mouse sensitivity <b id="c-sens-val">5.0</b></label>
+        <input type="range" id="c-sens" min="1" max="20" step="0.5" value="5">
+      </div>
+      <div class="ctl-row">
+        <label for="c-invert">Invert vertical look</label>
+        <input type="checkbox" id="c-invert">
+      </div>
+
+      <div id="touch-section">
+        <h4>Touch Controls</h4>
+        <div class="ctl-row">
+          <label for="c-touchlook">Look sensitivity <b id="c-touchlook-val">1.4</b></label>
+          <input type="range" id="c-touchlook" min="0.4" max="3.5" step="0.1" value="1.4">
+        </div>
+        <div class="ctl-row">
+          <label for="c-stick">Stick size <b id="c-stick-val">58</b></label>
+          <input type="range" id="c-stick" min="38" max="90" step="2" value="58">
+        </div>
+        <div class="ctl-row">
+          <label for="c-dead">Stick dead zone <b id="c-dead-val">0.28</b></label>
+          <input type="range" id="c-dead" min="0.05" max="0.5" step="0.01" value="0.28">
+        </div>
+        <div class="ctl-row">
+          <label for="c-btn">Button size <b id="c-btn-val">1.0×</b></label>
+          <input type="range" id="c-btn" min="0.6" max="1.6" step="0.05" value="1">
+        </div>
+        <div class="ctl-row">
+          <label for="c-lefty">Left-handed layout</label>
+          <input type="checkbox" id="c-lefty">
+        </div>
+      </div>
+
+      <div class="camp-foot" style="margin-top:20px">
+        <button class="chip" id="c-reset">Reset to defaults</button>
+        <span class="hint-line" id="c-saved" style="align-self:center">Saved automatically</span>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- HOW TO PLAY MODAL -->
 <div class="modal-back" id="modal-howto">
   <div class="modal chromeframe">
@@ -516,6 +587,162 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     } catch { $("lb-body").innerHTML = `<div class="lb-empty">LEADERBOARD UNREACHABLE</div>`; }
   }
   const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  // ---------- control settings ----------
+  // Stored locally and pushed into the engine at the start of every match.
+  const DEFAULT_CONTROLS = {
+    sensitivity: 5, invertY: false,
+    touchLook: 1.4, stickSize: 58, deadzone: 0.28, buttonScale: 1, leftHanded: false,
+    binds: { forward: "w", back: "s", moveleft: "a", moveright: "d",
+             jump: "SPACE", attack: "MOUSE1", weapnext: "MWHEELDOWN", weapprev: "MWHEELUP" },
+  };
+  const ACTIONS = [
+    ["forward", "Move forward", "+forward"], ["back", "Move back", "+back"],
+    ["moveleft", "Strafe left", "+moveleft"], ["moveright", "Strafe right", "+moveright"],
+    ["jump", "Jump", "+moveup"], ["attack", "Fire", "+attack"],
+    ["weapnext", "Next weapon", "weapnext"], ["weapprev", "Previous weapon", "weapprev"],
+  ];
+  let controls = (() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("qs_controls") || "{}");
+      return { ...DEFAULT_CONTROLS, ...saved, binds: { ...DEFAULT_CONTROLS.binds, ...(saved.binds || {}) } };
+    } catch { return { ...DEFAULT_CONTROLS, binds: { ...DEFAULT_CONTROLS.binds } }; }
+  })();
+  const saveControls = () => localStorage.setItem("qs_controls", JSON.stringify(controls));
+
+  // Browser key -> Quake key name.
+  function q3KeyName(e) {
+    const c = e.code, k = e.key;
+    if (c === "Space") return "SPACE";
+    if (c === "Enter") return "ENTER";
+    if (c === "Tab") return "TAB";
+    if (c === "Backspace") return "BACKSPACE";
+    if (c.startsWith("Shift")) return "SHIFT";
+    if (c.startsWith("Control")) return "CTRL";
+    if (c.startsWith("Alt")) return "ALT";
+    if (c === "ArrowUp") return "UPARROW";
+    if (c === "ArrowDown") return "DOWNARROW";
+    if (c === "ArrowLeft") return "LEFTARROW";
+    if (c === "ArrowRight") return "RIGHTARROW";
+    if (/^F\d{1,2}$/.test(c)) return c;
+    if (c.startsWith("Key")) return c.slice(3).toLowerCase();
+    if (c.startsWith("Digit")) return c.slice(5);
+    if (c.startsWith("Numpad")) return "KP_" + c.slice(6).toUpperCase();
+    return (k || "").length === 1 ? k.toLowerCase() : null;
+  }
+
+  // Everything the engine needs to reflect the current settings.
+  function engineControlCommands() {
+    const cmds = [`sensitivity ${controls.sensitivity}`,
+                  `m_pitch ${controls.invertY ? -0.022 : 0.022}`];
+    // Drop any default binding the player has moved elsewhere, so the old key
+    // doesn't keep working alongside the new one.
+    const inUse = new Set(Object.values(controls.binds));
+    for (const [action, , cmd] of ACTIONS) {
+      const dflt = DEFAULT_CONTROLS.binds[action];
+      if (dflt && !inUse.has(dflt)) cmds.push(`unbind ${dflt}`);
+      const key = controls.binds[action];
+      if (key) cmds.push(`bind ${key} "${cmd}"`);
+    }
+    return cmds;
+  }
+  const pushTouchSettings = () => {
+    const w = $("gameframe").contentWindow;
+    if (!w) return;
+    w.postMessage({ source: "quakesol", touch: {
+      radius: controls.stickSize, deadzone: controls.deadzone, lookScale: controls.touchLook,
+      invertY: controls.invertY, buttonScale: controls.buttonScale, leftHanded: controls.leftHanded,
+    } }, location.origin);
+  };
+
+  // ---------- controls UI ----------
+  const isTouchDevice = matchMedia("(pointer: coarse)").matches || "ontouchstart" in window;
+  $("touch-section").style.display = isTouchDevice ? "" : "none";
+  $("btn-controls").onclick = () => { renderBinds(); syncControlInputs(); $("modal-controls").classList.add("open"); };
+
+  function renderBinds() {
+    $("bind-table").innerHTML = ACTIONS.map(([action, label]) => `
+      <tr><td class="act">${label}</td>
+          <td class="keycell"><button class="bindbtn" data-action="${action}">${esc(controls.binds[action] || "—")}</button></td></tr>`).join("");
+    $("bind-table").querySelectorAll(".bindbtn").forEach(b => { b.onclick = () => listenForKey(b); });
+  }
+
+  let listening = null;
+  function listenForKey(btn) {
+    if (listening) { listening.el.classList.remove("listening"); listening.el.textContent = controls.binds[listening.action] || "—"; }
+    listening = { el: btn, action: btn.dataset.action };
+    btn.classList.add("listening");
+    btn.textContent = "press a key…";
+  }
+  addEventListener("keydown", (e) => {
+    if (!listening) return;
+    e.preventDefault(); e.stopPropagation();
+    const { el, action } = listening;
+    listening = null;
+    el.classList.remove("listening");
+    if (e.key !== "Escape") {
+      const name = q3KeyName(e);
+      if (name) {
+        // a key can only drive one action
+        for (const a of Object.keys(controls.binds)) if (a !== action && controls.binds[a] === name) controls.binds[a] = "";
+        controls.binds[action] = name;
+        saveControls();
+        flashSaved();
+      }
+    }
+    renderBinds();
+  }, true);
+  // mouse buttons are bindable too, but only while a bind slot is listening
+  addEventListener("mousedown", (e) => {
+    if (!listening || !$("modal-controls").classList.contains("open")) return;
+    if (e.target.closest(".bindbtn") === listening.el) return;   // the click that armed it
+    const name = ["MOUSE1", "MOUSE3", "MOUSE2"][e.button];
+    if (!name) return;
+    e.preventDefault();
+    const { el, action } = listening;
+    listening = null; el.classList.remove("listening");
+    for (const a of Object.keys(controls.binds)) if (a !== action && controls.binds[a] === name) controls.binds[a] = "";
+    controls.binds[action] = name; saveControls(); flashSaved(); renderBinds();
+  }, true);
+
+  let savedTimer = null;
+  function flashSaved() {
+    const el = $("c-saved");
+    el.textContent = "Saved ✓"; el.style.color = "var(--red)";
+    clearTimeout(savedTimer);
+    savedTimer = setTimeout(() => { el.textContent = "Saved automatically"; el.style.color = ""; }, 1400);
+  }
+
+  const SLIDERS = [
+    ["c-sens", "sensitivity", v => v.toFixed(1)],
+    ["c-touchlook", "touchLook", v => v.toFixed(1)],
+    ["c-stick", "stickSize", v => String(Math.round(v))],
+    ["c-dead", "deadzone", v => v.toFixed(2)],
+    ["c-btn", "buttonScale", v => `${v.toFixed(2)}×`],
+  ];
+  function syncControlInputs() {
+    for (const [id, key, fmt] of SLIDERS) { $(id).value = controls[key]; $(`${id}-val`).textContent = fmt(+controls[key]); }
+    $("c-invert").checked = !!controls.invertY;
+    $("c-lefty").checked = !!controls.leftHanded;
+  }
+  for (const [id, key, fmt] of SLIDERS) {
+    $(id).addEventListener("input", () => {
+      controls[key] = +$(id).value;
+      $(`${id}-val`).textContent = fmt(+$(id).value);
+      saveControls(); flashSaved(); pushTouchSettings();
+      if (key === "sensitivity") frameConsole(`sensitivity ${controls.sensitivity}`);
+    });
+  }
+  $("c-invert").onchange = () => {
+    controls.invertY = $("c-invert").checked; saveControls(); flashSaved();
+    frameConsole(`m_pitch ${controls.invertY ? -0.022 : 0.022}`); pushTouchSettings();
+  };
+  $("c-lefty").onchange = () => { controls.leftHanded = $("c-lefty").checked; saveControls(); flashSaved(); pushTouchSettings(); };
+  $("c-reset").onclick = () => {
+    controls = { ...DEFAULT_CONTROLS, binds: { ...DEFAULT_CONTROLS.binds } };
+    saveControls(); renderBinds(); syncControlInputs(); flashSaved(); pushTouchSettings();
+    engineControlCommands().forEach(frameConsole);
+  };
 
   // ---------- game lifecycle ----------
   const screens = { identify: $("screen-identify"), campaign: $("screen-campaign"),
@@ -705,6 +932,8 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     if (e.type === "match_start") {
       // engine is live: set the callsign (bot_minplayers fills the arena)
       frameConsole(`name "${run.name.replace(/[";]/g, "")}"`);
+      engineControlCommands().forEach(frameConsole);   // player's key/aim settings
+      pushTouchSettings();
     } else if (e.type === "score") {
       run.score = e.score; run.deaths = e.deaths;
       $("hud-score").textContent = e.score; $("hud-deaths").textContent = e.deaths;

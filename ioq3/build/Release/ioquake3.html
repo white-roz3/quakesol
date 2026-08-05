@@ -141,21 +141,24 @@ if (Q3_EMBEDDED) document.getElementById('q3events').style.display = 'none';
     bubbles: true, cancelable: true,
   }));
 
-  const RADIUS = 58, DEADZONE = 0.28, LOOK_SCALE = 1.4;
+  // Tunable from the lobby's control settings (see Q3Touch.apply below).
+  const cfg = { radius: 58, deadzone: 0.28, lookScale: 1.4, invertY: false,
+                buttonScale: 1, leftHanded: false };
+  const RADIUS = () => cfg.radius;
   let moveId = null, lookId = null, baseX = 0, baseY = 0, lastX = 0, lastY = 0;
   let tapX = 0, tapY = 0, tapAt = 0;
   const buttons = new Map(); // touch identifier -> element
 
   const applyStick = (dx, dy) => {
     const len = Math.hypot(dx, dy);
-    const clamped = len > RADIUS ? RADIUS / len : 1;
+    const clamped = len > RADIUS() ? RADIUS() / len : 1;
     thumb.style.transform = `translate(${dx * clamped}px, ${dy * clamped}px)`;
-    const nx = dx / RADIUS, ny = dy / RADIUS;
-    const live = Math.hypot(nx, ny) > DEADZONE;
-    setKey('forward', live && ny < -DEADZONE);
-    setKey('back', live && ny > DEADZONE);
-    setKey('left', live && nx < -DEADZONE);
-    setKey('right', live && nx > DEADZONE);
+    const nx = dx / RADIUS(), ny = dy / RADIUS();
+    const live = Math.hypot(nx, ny) > cfg.deadzone;
+    setKey('forward', live && ny < -cfg.deadzone);
+    setKey('back', live && ny > cfg.deadzone);
+    setKey('left', live && nx < -cfg.deadzone);
+    setKey('right', live && nx > cfg.deadzone);
   };
   const releaseStick = () => {
     moveId = null;
@@ -177,7 +180,9 @@ if (Q3_EMBEDDED) document.getElementById('q3events').style.display = 'none';
       const el = document.elementFromPoint(t.clientX, t.clientY);
       const btn = el && el.closest && el.closest('.tbtn');
       if (btn) { buttons.set(t.identifier, btn); pressButton(btn, true); continue; }
-      if (t.clientX < innerWidth * 0.45 && moveId === null) {
+      const onStickSide = cfg.leftHanded ? t.clientX > innerWidth * 0.55
+                                        : t.clientX < innerWidth * 0.45;
+      if (onStickSide && moveId === null) {
         moveId = t.identifier; baseX = t.clientX; baseY = t.clientY;
         stick.style.left = `${baseX}px`; stick.style.top = `${baseY}px`; stick.style.opacity = 1;
         applyStick(0, 0);
@@ -193,7 +198,8 @@ if (Q3_EMBEDDED) document.getElementById('q3events').style.display = 'none';
     for (const t of e.changedTouches) {
       if (t.identifier === moveId) applyStick(t.clientX - baseX, t.clientY - baseY);
       else if (t.identifier === lookId) {
-        look((t.clientX - lastX) * LOOK_SCALE, (t.clientY - lastY) * LOOK_SCALE);
+        look((t.clientX - lastX) * cfg.lookScale,
+             (t.clientY - lastY) * cfg.lookScale * (cfg.invertY ? -1 : 1));
         lastX = t.clientX; lastY = t.clientY;
       }
     }
@@ -214,6 +220,32 @@ if (Q3_EMBEDDED) document.getElementById('q3events').style.display = 'none';
     }
   };
   ui.addEventListener('touchend', endTouch, { passive: false });
+
+  // Applied by the lobby's control settings, live — no reload needed.
+  window.Q3Touch = {
+    apply(next = {}) {
+      Object.assign(cfg, next);
+      stick.style.width = stick.style.height = `${cfg.radius * 2.28}px`;
+      stick.style.margin = `${-cfg.radius * 1.14}px 0 0 ${-cfg.radius * 1.14}px`;
+      const scale = cfg.buttonScale;
+      for (const [id, base] of [['tfire', 96], ['tjump', 72], ['tweap', 64]]) {
+        const el = document.getElementById(id);
+        el.style.width = el.style.height = `${base * scale}px`;
+      }
+      // mirror the button cluster for left-handed players
+      for (const id of ['tfire', 'tjump', 'tweap']) {
+        const el = document.getElementById(id);
+        const right = { tfire: 26, tjump: 136, tweap: 40 }[id];
+        el.style.right = cfg.leftHanded ? 'auto' : `${right}px`;
+        el.style.left = cfg.leftHanded ? `${right}px` : 'auto';
+      }
+    },
+  };
+  addEventListener('message', (e) => {
+    if (e.origin === location.origin && e.data && e.data.source === 'quakesol' && e.data.touch) {
+      window.Q3Touch.apply(e.data.touch);
+    }
+  });
   ui.addEventListener('touchcancel', endTouch, { passive: false });
 })();
 window.Q3Bridge = {
