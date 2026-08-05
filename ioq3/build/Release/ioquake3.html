@@ -253,10 +253,20 @@ const urlParams = new URLSearchParams(window.location.search);
 const com_basegame = urlParams.get('com_basegame') || BASEGAME;
 const fs_basegame = urlParams.get('fs_basegame') || '';
 const fs_game = urlParams.get('fs_game') || '';
+// r_mode -2 means "desktop resolution", which Emscripten answers from
+// screen.width/height — and on phones those report the physical *portrait*
+// size and never swap when the device rotates, so a landscape phone rendered a
+// tall portrait framebuffer. Size the renderer from the window we actually
+// occupy instead.
+const viewW = Math.max(320, Math.round(window.innerWidth));
+const viewH = Math.max(240, Math.round(window.innerHeight));
 let generatedArguments = `
     +set sv_pure 0
     +set net_enabled 0
-    +set r_mode -2
+    +set r_mode -1
+    +set r_customwidth ${viewW}
+    +set r_customheight ${viewH}
+    +set r_fullscreen 0
     +set cl_voip 0
     +set s_alCapture 0
     +set com_basegame "${com_basegame}"
@@ -345,4 +355,25 @@ window.Q3Module = await modulePromise;
 // Queue a console command from the page, e.g. Q3Console('addbot random 1').
 window.Q3Console = (cmd) =>
     window.Q3Module.ccall('Sys_QueueConsoleCommand', null, ['string'], [cmd]);
+
+// Rotating the device changes the window shape but not the renderer's, so
+// rebuild it at the new size. Debounced, because iOS fires resize repeatedly
+// through the rotation animation.
+(() => {
+    let lastW = viewW, lastH = viewH, timer = null;
+    addEventListener('resize', () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+            const w = Math.max(320, Math.round(window.innerWidth));
+            const h = Math.max(240, Math.round(window.innerHeight));
+            if (Math.abs(w - lastW) < 24 && Math.abs(h - lastH) < 24) return;
+            lastW = w; lastH = h;
+            try {
+                window.Q3Console(`r_customwidth ${w}`);
+                window.Q3Console(`r_customheight ${h}`);
+                window.Q3Console('vid_restart');
+            } catch (e) { /* engine not up yet */ }
+        }, 350);
+    });
+})();
 </script>
