@@ -200,12 +200,14 @@ main { position: relative; z-index: 10; }
 @media (max-width: 620px) { .campaign .inner { padding: 22px 18px; } .tiers { max-height: none; } }
 
 /* ---------- arena ---------- */
+/* Playing always takes over the whole viewport, on every device: the arena is
+   pulled out of the document flow so it can never end up below the fold, and
+   the page behind it is locked so it cannot be scrolled away from.
+   100dvh (not vh) so iOS Safari's collapsing URL bar doesn't crop the canvas. */
 #screen-arena { position: relative; height: calc(100vh - 62px); }
-/* on phones/tablets the arena takes the whole screen: the header wraps at
-   narrow widths, which otherwise left the canvas mis-sized in landscape */
-@media (pointer: coarse) {
-  #screen-arena.active { position: fixed; inset: 0; height: 100svh; z-index: 60; }
-}
+#screen-arena.active { position: fixed; inset: 0; width: 100vw; height: 100dvh; z-index: 100; }
+body.playing { overflow: hidden; }
+body.playing header { display: none; }
 #gameframe { width: 100%; height: 100%; border: 0; display: block; background: #000; }
 .hud {
   position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
@@ -522,6 +524,8 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   const show = (k) => {
     current = k;
     Object.entries(screens).forEach(([n, el]) => el.classList.toggle("active", n === k));
+    document.body.classList.toggle("playing", k === "arena");
+    window.scrollTo(0, 0);   // entering from a scrolled campaign list
     checkOrientation();
     syncAudio();
   };
