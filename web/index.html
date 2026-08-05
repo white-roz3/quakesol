@@ -6,243 +6,274 @@
 <title>QUAKESOL — Arena Protocol</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <script src="/web/quake-config.js"></script>
 <style>
 :root {
-  --blood: #d31111;
-  --blood-hot: #ff2a1a;
-  --blood-glow: rgba(255, 40, 20, .55);
-  --white-hot: #fff3e0;
-  --dim: #7c1410;
-  --ash: #8f8478;
-  --line: #4a4a4a;
+  --red: #d31212;
+  --red-hot: #ff2a1a;
+  --red-glow: rgba(255, 42, 26, .45);
+  --chrome-hi: #e7ebf1;
+  --chrome: #aab2bd;
+  --chrome-lo: #4c545e;
+  --steel: #14171c;
+  --steel-deep: #0a0c0f;
+  --text: #dfe3e9;
+  --mute: #7d8590;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { height: 100%; background: #000; }
-body { font-family: "Share Tech Mono", monospace; color: var(--blood); overflow-x: hidden; }
-
-/* emblem backdrop + floor glow */
+html, body { height: 100%; background: #05060a; }
+body {
+  font-family: "Share Tech Mono", monospace; color: var(--text); overflow-x: hidden;
+}
 .backdrop {
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  background:
-    radial-gradient(60% 30% at 50% 100%, rgba(160, 10, 5, .28), transparent 70%),
-    url("/web/assets/emblem.png") center 68% / min(100vh, 112vw) no-repeat,
-    #000;
-  filter: brightness(.9);
+  background: url("/web/assets/bg.jpg") center / cover no-repeat, #05060a;
 }
 .backdrop::after {
   content: ""; position: absolute; inset: 0;
-  background: radial-gradient(75% 60% at 50% 45%, transparent 45%, rgba(0,0,0,.78) 100%);
+  background: radial-gradient(90% 80% at 50% 45%, transparent 40%, rgba(3, 4, 7, .72) 100%);
 }
 
-main { position: relative; z-index: 1; }
+/* ---------- chrome utility (generated art) ---------- */
+.chromeframe {
+  position: relative;
+  background: url("/web/assets/ui-panel.png") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, .65));
+}
+.chromeframe > .inner { background: none; }
+
+/* ---------- header ---------- */
+header {
+  position: relative; z-index: 20; height: 62px;
+  display: flex; align-items: center; gap: 14px; padding: 0 18px;
+  background: url("/web/assets/ui-bar.png") center / 100% 100% no-repeat,
+    linear-gradient(180deg, rgba(16, 19, 24, .96), rgba(8, 10, 13, .96));
+}
+.mark { height: 32px; width: 32px; color: var(--red);
+  filter: drop-shadow(0 0 8px var(--red-glow)); }
+.wordmark {
+  font-family: "Michroma", sans-serif; font-size: 19px; letter-spacing: .18em;
+  color: var(--red); text-transform: uppercase;
+  text-shadow: 0 0 16px var(--red-glow);
+  margin-right: auto;
+}
+.round-pill {
+  display: flex; align-items: center; gap: 9px; white-space: nowrap;
+  font-size: 12.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--text);
+  border: 1px solid var(--chrome-lo); padding: 8px 14px;
+  background: rgba(6, 8, 11, .8);
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+.round-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red-hot);
+  box-shadow: 0 0 9px var(--red-glow); animation: blink 1.2s steps(2) infinite; }
+@keyframes blink { 50% { opacity: .3; } }
+.round-pill.offline { color: var(--mute); }
+.round-pill.offline .dot { background: var(--mute); box-shadow: none; animation: none; }
+.chip {
+  font-family: inherit; font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--mute); background: rgba(6, 8, 11, .8); border: 1px solid var(--chrome-lo);
+  padding: 8px 12px; cursor: pointer; text-decoration: none;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  transition: color .15s, border-color .15s;
+}
+.chip:hover { color: var(--red-hot); border-color: var(--chrome); }
+.chip b { font-weight: 400; color: var(--text); }
+nav { display: flex; gap: 10px; }
+nav button {
+  font-family: "Michroma", sans-serif; font-size: 11px; letter-spacing: .12em;
+  color: var(--text); text-transform: uppercase; cursor: pointer;
+  background: none; padding: 4px 10px;
+  border: 14px solid transparent; border-left-width: 26px; border-right-width: 26px;
+  border-image: url("/web/assets/ui-tab.png") 56 140 fill / 14px 26px stretch;
+  transition: color .15s, text-shadow .15s, filter .15s;
+}
+nav button:hover { color: var(--red-hot); text-shadow: 0 0 12px var(--red-glow); filter: brightness(1.25); }
+
+main { position: relative; z-index: 10; }
 .screen { display: none; }
 .screen.active { display: block; }
 
-/* shared lobby column */
-.col {
-  min-height: 100vh; display: flex; flex-direction: column; align-items: center;
-  padding: 4vh 18px 90px; text-align: center;
+/* ---------- identify ---------- */
+#screen-identify { min-height: calc(100vh - 62px); display: grid; place-items: center; padding: 5vh 16px; }
+.panel { width: min(880px, 96vw); }
+.panel .inner { display: grid; grid-template-columns: 220px 1fr; gap: 0; padding: 34px; }
+.sigil {
+  background: url("/web/assets/ui-pane.png") center / 100% 100% no-repeat;
+  display: flex; align-items: center; justify-content: center; position: relative;
+  margin-right: 30px; min-height: 380px;
 }
-.logo { width: min(92vw, 900px); aspect-ratio: 21 / 9; object-fit: cover;
-  margin-bottom: 1.5vh; user-select: none; pointer-events: none;
-  mix-blend-mode: screen;
-  filter: contrast(1.45) brightness(1.02); }
-
-.menufont, .go, .menu-item, .gate h2, .debrief-title {
-  font-family: "Anton", "Arial Narrow", sans-serif; text-transform: uppercase;
-}
-
+.sigil svg { width: 66%; aspect-ratio: 1; color: var(--red);
+  filter: drop-shadow(0 0 22px var(--red-glow)); }
 .tag {
-  font-size: clamp(14px, 1.9vw, 19px); letter-spacing: .55em; text-indent: .55em;
-  color: var(--blood); margin: 1vh 0 2.2vh;
-  text-shadow: 0 0 18px var(--blood-glow);
+  display: flex; align-items: center; gap: 12px;
+  font-size: 12.5px; letter-spacing: .28em; color: var(--red); text-transform: uppercase;
+  border: 1px solid var(--chrome-lo); background: rgba(5, 7, 10, .85);
+  padding: 10px 14px; margin-bottom: 26px;
 }
-.gate { width: min(560px, 92vw); }
+.tag::after { content: "///////"; color: var(--chrome-lo); letter-spacing: .1em; margin-left: auto; }
 .gate h2 {
-  font-size: clamp(30px, 5vw, 46px); line-height: 1.12; letter-spacing: .06em;
-  color: var(--blood); margin-bottom: 3.4vh;
-  text-shadow: 0 0 26px var(--blood-glow), 0 2px 0 #000;
+  font-family: "Michroma", sans-serif; font-size: clamp(22px, 3.4vw, 34px); line-height: 1.3;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--chrome-hi); margin-bottom: 26px;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, .8);
 }
-.field { margin-bottom: 2.4vh; text-align: left; }
+.gate h2 span { color: var(--red); text-shadow: 0 0 18px var(--red-glow); }
+.field { margin-bottom: 20px; text-align: left; }
 .field label {
-  display: block; font-family: "Anton", sans-serif; font-size: 13px; letter-spacing: .34em;
-  color: var(--blood); text-transform: uppercase; margin-bottom: 8px;
-  text-shadow: 0 0 12px rgba(255, 40, 20, .35);
+  display: block; font-size: 11.5px; letter-spacing: .26em; color: var(--text);
+  text-transform: uppercase; margin-bottom: 8px;
 }
 .field input {
-  width: 100%; font-family: "Share Tech Mono", monospace; font-size: 15px; color: #eee;
-  background: rgba(6, 6, 6, .88); border: 1px solid #9c9c9c; padding: 11px 12px; outline: none;
-  caret-color: var(--blood-hot);
+  width: 100%; font-family: inherit; font-size: 15px; color: var(--text);
+  background: rgba(4, 5, 8, .92); border: 1px solid var(--chrome-lo); padding: 12px 13px;
+  outline: none; caret-color: var(--red-hot);
   transition: border-color .15s, box-shadow .15s;
 }
-.field input::placeholder { color: #9a9a9a; }
-.field input:focus { border-color: var(--blood-hot); box-shadow: 0 0 16px rgba(255, 40, 20, .35); }
-.field input.bad { border-color: var(--blood-hot); box-shadow: 0 0 16px rgba(255, 40, 20, .6); }
-.field .hint { font-size: 11px; color: var(--ash); margin-top: 6px; letter-spacing: .04em; }
+.field input::placeholder { color: var(--mute); }
+.field input:focus { border-color: var(--chrome); box-shadow: 0 0 14px rgba(255, 42, 26, .18); }
+.field input.bad { border-color: var(--red-hot); box-shadow: 0 0 14px var(--red-glow); }
+.field .hint { font-size: 11px; color: var(--mute); margin-top: 6px; }
 .field .hint.err { color: #ff6a5a; }
+.go {
+  width: 100%; margin-top: 8px; padding: 6px 0; cursor: pointer; position: relative;
+  font-family: "Michroma", sans-serif; font-size: 14.5px; letter-spacing: .3em; text-indent: .3em;
+  text-transform: uppercase; color: var(--chrome-hi);
+  background: none;
+  border: 26px solid transparent; border-left-width: 52px; border-right-width: 52px;
+  border-image: url("/web/assets/ui-button.png") 84 170 fill / 26px 52px stretch;
+  transition: color .15s, filter .15s;
+}
+.go:hover { color: #fff; filter: brightness(1.3) drop-shadow(0 0 16px var(--red-glow)); }
+.go:disabled { color: var(--mute); filter: grayscale(.7) brightness(.7); cursor: not-allowed; }
+.smallprint { grid-column: 1 / -1; margin-top: 26px; font-size: 12.5px; line-height: 1.8; color: var(--mute); text-align: center; }
+.smallprint b { color: var(--red); font-weight: 400; }
 
-/* Q3 text menu items */
-.go, .menu-item {
-  display: inline-block; background: none; border: none; cursor: crosshair;
-  color: var(--blood); text-shadow: 0 0 20px var(--blood-glow), 0 2px 0 #000;
-  transition: color .1s, text-shadow .1s, transform .1s;
-  letter-spacing: .1em; line-height: 1;
-}
-.go { font-size: clamp(34px, 5.6vw, 52px); margin: 2.6vh 0 1.2vh; position: relative; }
-.go:hover, .go:focus-visible, .menu-item:hover, .menu-item:focus-visible {
-  color: var(--white-hot);
-  text-shadow: 0 0 8px #fff, 0 0 30px var(--blood-hot), 0 0 60px var(--blood-glow);
-  transform: scale(1.03);
-  outline: none;
-}
-.go:disabled { color: var(--dim); cursor: not-allowed; text-shadow: none; transform: none; }
-.go .xh {
-  position: absolute; right: -.95em; top: 50%; width: .62em; height: .62em;
-  transform: translateY(-50%); opacity: 0; transition: opacity .12s;
-}
-.go:hover .xh, .go:focus-visible .xh { opacity: 1; }
-.go .xh circle, .go .xh line { stroke: var(--blood-hot); stroke-width: 7; fill: none;
-  filter: drop-shadow(0 0 6px var(--blood-glow)); }
-.menu-item { font-size: clamp(22px, 3.4vw, 32px); margin-top: 2vh; }
-.smallprint {
-  margin-top: 3.2vh; max-width: 520px; font-size: 12px; line-height: 1.75;
-  color: var(--ash); letter-spacing: .03em;
-}
-.smallprint b { color: #c9bfae; font-weight: 400; }
-
-/* bottom status line */
-.statusline {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
-  display: flex; justify-content: center; align-items: center; gap: 22px;
-  padding: 12px 10px; font-size: 12px; letter-spacing: .14em;
-  color: var(--dim); background: linear-gradient(0deg, rgba(0,0,0,.85), transparent);
-  text-transform: uppercase;
-}
-.statusline .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--blood-hot);
-  box-shadow: 0 0 8px var(--blood-glow); display: inline-block; margin-right: 8px;
-  animation: blink 1.1s steps(2) infinite; vertical-align: 1px; }
-@keyframes blink { 50% { opacity: .25; } }
-.round-pill { color: var(--blood); }
-.round-pill.offline { color: var(--dim); }
-.round-pill.offline .dot { background: var(--dim); box-shadow: none; animation: none; }
-.chip { background: none; border: none; font-family: inherit; font-size: inherit;
-  letter-spacing: inherit; color: var(--dim); cursor: pointer; text-decoration: none;
-  text-transform: uppercase; transition: color .15s; }
-.chip:hover { color: var(--blood-hot); }
-.chip b { font-weight: 400; }
-
-/* arena */
-#screen-arena { position: relative; height: 100vh; }
+/* ---------- arena ---------- */
+#screen-arena { position: relative; height: calc(100vh - 62px); }
 #gameframe { width: 100%; height: 100%; border: 0; display: block; background: #000; }
 .hud {
   position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
   display: flex; gap: 26px; z-index: 30; pointer-events: none;
-  background: rgba(0, 0, 0, .78); border: 1px solid #300; padding: 8px 20px;
+  background: rgba(6, 8, 11, .85); border: 1px solid var(--chrome-lo); padding: 8px 22px;
+  clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px);
 }
-.hud .k { color: var(--dim); font-size: 10px; display: block; letter-spacing: .3em; text-transform: uppercase; }
-.hud b { font-family: "Anton", sans-serif; color: var(--blood); font-size: 19px; font-weight: 400;
-  text-shadow: 0 0 12px var(--blood-glow); }
-.hud .frags b { color: var(--blood-hot); }
-.hud .timer b { color: var(--white-hot); text-shadow: 0 0 10px rgba(255,240,220,.4); }
+.hud .k { color: var(--mute); font-size: 10px; display: block; letter-spacing: .26em; text-transform: uppercase; }
+.hud b { font-family: "Michroma", sans-serif; color: var(--text); font-size: 16px; font-weight: 400; }
+.hud .frags b { color: var(--red-hot); text-shadow: 0 0 10px var(--red-glow); }
+.hud .timer b { color: var(--chrome-hi); }
 .hud-note {
   position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 30;
-  font-size: 11.5px; letter-spacing: .18em; color: var(--blood);
-  background: rgba(0, 0, 0, .75); padding: 7px 14px; border: 1px solid #300;
+  font-size: 11.5px; letter-spacing: .16em; color: var(--text);
+  background: rgba(6, 8, 11, .8); padding: 7px 14px; border: 1px solid var(--chrome-lo);
   pointer-events: none; opacity: 1; transition: opacity .6s; text-transform: uppercase;
 }
 .hud-note.gone { opacity: 0; }
 
-/* debrief */
+/* ---------- debrief ---------- */
+#screen-debrief { min-height: calc(100vh - 62px); display: grid; place-items: center; padding: 5vh 16px; }
+.debrief { width: min(640px, 96vw); }
+.debrief .inner { padding: 40px 44px; text-align: center; }
 .debrief-title {
-  font-size: clamp(17px, 2.4vw, 22px); letter-spacing: .5em; text-indent: .5em;
-  color: var(--blood); margin: 2vh 0 1vh; text-shadow: 0 0 18px var(--blood-glow);
+  font-family: "Michroma", sans-serif; font-size: 13px; letter-spacing: .4em;
+  color: var(--red); text-transform: uppercase; margin-bottom: 14px;
+  text-shadow: 0 0 14px var(--red-glow);
 }
 .bigscore {
-  font-family: "Anton", sans-serif; font-size: clamp(90px, 16vw, 150px); line-height: 1;
-  color: var(--white-hot);
-  text-shadow: 0 0 12px #fff3, 0 0 50px var(--blood-hot), 0 0 110px var(--blood-glow), 0 4px 0 #000;
+  font-family: "Michroma", sans-serif; font-size: clamp(64px, 11vw, 100px); line-height: 1;
+  color: var(--chrome-hi); text-shadow: 0 0 30px var(--red-glow), 0 4px 0 #000;
 }
-.bigscore small { font-size: .17em; color: var(--blood); letter-spacing: .4em; vertical-align: .9em; }
-.statrow { display: flex; justify-content: center; gap: 40px; margin: 2.6vh 0 1vh; }
-.statrow .k { font-size: 10px; letter-spacing: .3em; color: var(--dim); display: block;
-  text-transform: uppercase; margin-bottom: 5px; }
-.statrow b { font-family: "Anton", sans-serif; font-size: 26px; color: var(--blood); font-weight: 400;
-  text-shadow: 0 0 14px var(--blood-glow); }
-#submit-status { font-size: 12px; letter-spacing: .16em; margin: 1.6vh 0 0; color: var(--ash);
-  min-height: 16px; text-transform: uppercase; }
-#submit-status.ok { color: #ffb84d; text-shadow: 0 0 12px rgba(255, 160, 40, .5); }
+.bigscore small { font-size: .18em; color: var(--red); letter-spacing: .34em; vertical-align: .9em; }
+.statrow { display: flex; justify-content: center; gap: 2px; margin: 26px 0 8px; }
+.statrow div { border: 1px solid var(--chrome-lo); background: rgba(5, 7, 10, .85); padding: 12px 22px; min-width: 118px; }
+.statrow .k { font-size: 10px; letter-spacing: .26em; color: var(--mute); display: block; text-transform: uppercase; margin-bottom: 5px; }
+.statrow b { font-family: "Michroma", sans-serif; font-size: 19px; color: var(--text); font-weight: 400; }
+#submit-status { font-size: 12px; letter-spacing: .14em; margin: 18px 0 4px; color: var(--mute); min-height: 16px; text-transform: uppercase; }
+#submit-status.ok { color: var(--red-hot); text-shadow: 0 0 10px var(--red-glow); }
 #submit-status.err { color: #ff6a5a; }
+.debrief .go { margin-top: 16px; }
 
-/* modals */
-.modal-back { position: fixed; inset: 0; background: rgba(0, 0, 0, .88); z-index: 100;
-  display: none; place-items: center; padding: 20px; }
+/* ---------- modals ---------- */
+.modal-back { position: fixed; inset: 0; background: rgba(3, 4, 7, .85); backdrop-filter: blur(4px);
+  z-index: 100; display: none; place-items: center; padding: 20px; }
 .modal-back.open { display: grid; }
-.modal {
-  width: min(640px, 94vw); max-height: 84vh; overflow-y: auto; text-align: left;
-  background: #050505; border: 2px solid var(--dim); box-shadow: 0 0 60px rgba(160, 10, 5, .35);
-  padding: 34px 38px;
-}
+.modal { width: min(680px, 94vw); max-height: 84vh; }
+.modal .inner { padding: 32px 38px; overflow-y: auto; max-height: calc(84vh - 6px); text-align: left; }
 .modal header2 { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 20px; }
-.modal h3 { font-family: "Anton", sans-serif; font-size: 26px; letter-spacing: .14em;
-  text-transform: uppercase; color: var(--blood); text-shadow: 0 0 18px var(--blood-glow); }
-.modal .x { background: none; border: 1px solid var(--dim); color: var(--dim);
+.modal h3 { font-family: "Michroma", sans-serif; font-size: 19px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--chrome-hi); }
+.modal .x { background: none; border: 1px solid var(--chrome-lo); color: var(--mute);
   font-family: inherit; font-size: 12px; padding: 6px 11px; cursor: pointer; letter-spacing: .1em; }
-.modal .x:hover { border-color: var(--blood-hot); color: var(--blood-hot); }
-.modal h4 { font-family: "Anton", sans-serif; font-size: 15px; letter-spacing: .3em;
-  color: var(--blood-hot); text-transform: uppercase; margin: 22px 0 10px; }
-.modal p, .modal li { font-size: 13.5px; line-height: 1.75; color: #b7ab99; }
+.modal .x:hover { border-color: var(--red); color: var(--red-hot); }
+.modal h4 { font-family: "Michroma", sans-serif; font-size: 12px; letter-spacing: .3em;
+  color: var(--red); text-transform: uppercase; margin: 22px 0 10px; }
+.modal p, .modal li { font-size: 13.5px; line-height: 1.75; color: var(--text); }
 .modal ul { list-style: none; }
 .modal li { padding-left: 18px; position: relative; margin-bottom: 7px; }
-.modal li::before { content: "»"; position: absolute; left: 0; color: var(--blood-hot);
-  text-shadow: 0 0 8px var(--blood-glow); }
-.modal li b { color: var(--white-hot); font-weight: 400; }
-.modal kbd { background: #111; border: 1px solid #333; border-bottom-width: 3px;
-  padding: 1px 7px; font-size: 12px; color: var(--blood-hot); font-family: inherit; }
+.modal li::before { content: "»"; position: absolute; left: 0; color: var(--red-hot); }
+.modal li b { color: var(--red); font-weight: 400; }
+.modal kbd { background: #0a0c10; border: 1px solid var(--chrome-lo); border-bottom-width: 3px;
+  padding: 1px 7px; font-size: 12px; color: var(--chrome-hi); font-family: inherit; }
 table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-.lb th { text-align: left; font-size: 10px; letter-spacing: .3em; color: var(--dim);
-  text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid var(--dim); font-weight: 400; }
-.lb td { padding: 10px; border-bottom: 1px solid #1c0605; color: #c9bfae; }
-.lb tr:first-child td { color: var(--white-hot); text-shadow: 0 0 12px rgba(255, 240, 220, .3); }
-.lb td.rank { font-family: "Anton", sans-serif; color: var(--blood-hot); width: 46px;
-  text-shadow: 0 0 10px var(--blood-glow); }
-.lb td.score { text-align: right; color: var(--blood-hot); font-family: "Anton", sans-serif; }
-.lb-empty { font-size: 13px; color: var(--dim); padding: 26px 0 10px; text-align: center;
+.lb th { text-align: left; font-size: 10px; letter-spacing: .26em; color: var(--mute);
+  text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid var(--chrome-lo); font-weight: 400; }
+.lb td { padding: 10px; border-bottom: 1px solid rgba(76, 84, 94, .3); color: var(--text); }
+.lb tr:first-child td { color: var(--chrome-hi); }
+.lb td.rank { font-family: "Michroma", sans-serif; color: var(--red-hot); width: 46px; }
+.lb td.score { text-align: right; color: var(--red-hot); font-family: "Michroma", sans-serif; }
+.lb-empty { font-size: 13px; color: var(--mute); padding: 26px 0 10px; text-align: center;
   letter-spacing: .14em; text-transform: uppercase; }
-@media (max-width: 620px) {
-  .statusline { gap: 12px; font-size: 10.5px; flex-wrap: wrap; }
-  .statrow { gap: 24px; }
+
+@media (max-width: 860px) {
+  header { flex-wrap: wrap; height: auto; padding: 10px 12px; gap: 10px; }
+  .wordmark { font-size: 15px; }
+  nav { width: 100%; }
+  nav button { flex: 1; }
+  .panel .inner { grid-template-columns: 1fr; padding: 24px; }
+  .sigil { display: none; }
 }
 </style>
 </head>
 <body>
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="trident" viewBox="0 0 100 100">
+    <path fill="currentColor" d="M17 16 A41 41 0 1 0 83 16 A38 38 0 1 1 17 16 Z"/>
+    <path fill="currentColor" d="M50 6 L56 22 L52.5 34 L52.5 50 L50 96 L47.5 50 L47.5 34 L44 22 Z"/>
+  </symbol>
+</svg>
 <div class="backdrop"></div>
+
+<header>
+  <svg class="mark"><use href="#trident"/></svg>
+  <div class="wordmark">Quakesol</div>
+  <div class="round-pill offline" id="round-pill"><span class="dot"></span><span id="round-text">LOCAL MODE</span></div>
+  <button class="chip" id="ca-chip" style="display:none" title="Copy contract address">CA <b id="ca-short"></b> ⧉</button>
+  <a class="chip" id="x-chip" style="display:none" target="_blank" rel="noopener">𝕏 COMMUNITY</a>
+  <nav>
+    <button id="btn-leaderboard">Leaderboard</button>
+    <button id="btn-howto">How to Play</button>
+  </nav>
+</header>
 
 <main>
   <!-- IDENTIFY -->
   <section class="screen active" id="screen-identify">
-    <div class="col">
-      <video class="logo" autoplay muted loop playsinline poster="/web/assets/logo.png" aria-label="QUAKESOL">
-        <source src="/web/assets/logo.mp4" type="video/mp4">
-      </video>
-      <div class="tag">Identify Yourself</div>
-      <div class="gate">
-        <h2>Pick a callsign<br>Wallet optional</h2>
-        <div class="field">
-          <label for="f-name">Callsign</label>
-          <input id="f-name" maxlength="24" spellcheck="false" autocomplete="off" placeholder="Enter your callsign">
+    <div class="panel chromeframe">
+      <div class="inner">
+        <div class="sigil"><svg viewBox="0 0 100 100"><use href="#trident"/></svg></div>
+        <div class="gate">
+          <div class="tag">Identify Yourself</div>
+          <h2>Pick a callsign.<br><span>Wallet optional.</span></h2>
+          <div class="field">
+            <label for="f-name">Callsign</label>
+            <input id="f-name" maxlength="24" spellcheck="false" autocomplete="off" placeholder="Enter your callsign">
+          </div>
+          <div class="field">
+            <label for="f-wallet">Solana wallet — optional</label>
+            <input id="f-wallet" spellcheck="false" autocomplete="off" placeholder="Paste your Solana wallet address">
+            <div class="hint" id="wallet-hint">Pasted only. Never connected, never charged.</div>
+          </div>
+          <button class="go" id="btn-enter">Enter the Arena</button>
         </div>
-        <div class="field">
-          <label for="f-wallet">Solana wallet — optional</label>
-          <input id="f-wallet" spellcheck="false" autocomplete="off" placeholder="Paste your Solana wallet address">
-          <div class="hint" id="wallet-hint">Pasted only. Never connected, never charged.</div>
-        </div>
-        <button class="go" id="btn-enter">Enter the Arena<svg class="xh" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="30"/><line x1="50" y1="2" x2="50" y2="26"/><line x1="50" y1="74" x2="50" y2="98"/><line x1="2" y1="50" x2="26" y2="50"/><line x1="74" y1="50" x2="98" y2="50"/></svg></button>
-        <br>
-        <button class="menu-item" id="btn-leaderboard">Leaderboard</button>
-        <br>
-        <button class="menu-item" id="btn-howto">How to Play</button>
         <p class="smallprint">A callsign is all you need to fight. Add a wallet and your runs are scored on
           the live board and paid out — it's your <b>leaderboard identity</b> and your <b>payout address</b>.
           Nothing is charged and nothing is connected — the address is only pasted.</p>
@@ -264,64 +295,60 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 
   <!-- DEBRIEF -->
   <section class="screen" id="screen-debrief">
-    <div class="col">
-      <video class="logo" autoplay muted loop playsinline poster="/web/assets/logo.png" aria-label="QUAKESOL">
-        <source src="/web/assets/logo.mp4" type="video/mp4">
-      </video>
-      <div class="debrief-title">// Match Report</div>
-      <div class="bigscore"><span id="d-score">0</span><small>Frags</small></div>
-      <div class="statrow">
-        <div><span class="k">Deaths</span><b id="d-deaths">0</b></div>
-        <div><span class="k">Net</span><b id="d-net">0</b></div>
-        <div><span class="k">Map</span><b id="d-map">—</b></div>
+    <div class="debrief chromeframe">
+      <div class="inner">
+        <div class="debrief-title">// Match Report</div>
+        <div class="bigscore"><span id="d-score">0</span><small>Frags</small></div>
+        <div class="statrow">
+          <div><span class="k">Deaths</span><b id="d-deaths">0</b></div>
+          <div><span class="k">Net</span><b id="d-net">0</b></div>
+          <div><span class="k">Map</span><b id="d-map">—</b></div>
+        </div>
+        <div id="submit-status"></div>
+        <button class="go" id="btn-again">Run It Back</button>
       </div>
-      <div id="submit-status"></div>
-      <button class="go" id="btn-again">Run It Back<svg class="xh" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="30"/><line x1="50" y1="2" x2="50" y2="26"/><line x1="50" y1="74" x2="50" y2="98"/><line x1="2" y1="50" x2="26" y2="50"/><line x1="74" y1="50" x2="98" y2="50"/></svg></button>
     </div>
   </section>
 </main>
 
-<!-- bottom status -->
-<div class="statusline">
-  <span class="round-pill offline" id="round-pill"><span class="dot"></span><span id="round-text">LOCAL MODE</span></span>
-  <button class="chip" id="ca-chip" style="display:none" title="Copy contract address">CA <b id="ca-short"></b> ⧉</button>
-  <a class="chip" id="x-chip" style="display:none" target="_blank" rel="noopener">𝕏 COMMUNITY</a>
-</div>
-
 <!-- LEADERBOARD MODAL -->
 <div class="modal-back" id="modal-lb">
-  <div class="modal">
-    <header2><h3>Leaderboard</h3><button class="x" data-close="modal-lb">CLOSE ✕</button></header2>
-    <div id="lb-body"><div class="lb-empty">NO BACKEND CONFIGURED — LOCAL MODE</div></div>
+  <div class="modal chromeframe">
+    <div class="inner">
+      <header2><h3>Leaderboard</h3><button class="x" data-close="modal-lb">CLOSE ✕</button></header2>
+      <div id="lb-body"><div class="lb-empty">NO BACKEND CONFIGURED — LOCAL MODE</div></div>
+    </div>
   </div>
 </div>
 
 <!-- HOW TO PLAY MODAL -->
 <div class="modal-back" id="modal-howto">
-  <div class="modal">
-    <header2><h3>How to Play</h3><button class="x" data-close="modal-howto">CLOSE ✕</button></header2>
-    <p>Quake III Arena is the fastest deathmatch ever made, running in your browser via the open-source
-      ioquake3 engine and OpenArena. You're dropped into the arena with bots. Frag everything. Highest
-      score when the clock runs out wins the round.</p>
-    <h4>Controls</h4>
-    <ul>
-      <li><kbd>Click</kbd> the arena once to grab your mouse</li>
-      <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · <kbd>Space</kbd> jump · mouse aims, <kbd>LMB</kbd> fires</li>
-      <li>Number keys <kbd>1</kbd>–<kbd>9</kbd> switch weapons — grab them off the floor</li>
-      <li><kbd>Tab</kbd> shows the scoreboard · <kbd>Esc</kbd> opens the menu</li>
-    </ul>
-    <h4>Scoring</h4>
-    <ul>
-      <li>Frag a bot — <b>+1</b> · get fragged — nothing · fall in the void — <b>−1</b></li>
-      <li>Your run posts automatically when the match ends. Best run of the round counts.</li>
-      <li>Add a wallet to your profile to appear on the paid leaderboard.</li>
-    </ul>
-    <h4>Tips</h4>
-    <ul>
-      <li>Never stop moving. Strafe-jump to build speed.</li>
-      <li>Control the armor and the rocket launcher — the map cycles them on timers.</li>
-      <li>The railgun rewards patience; the lightning gun rewards tracking.</li>
-    </ul>
+  <div class="modal chromeframe">
+    <div class="inner">
+      <header2><h3>How to Play</h3><button class="x" data-close="modal-howto">CLOSE ✕</button></header2>
+      <p>Quake III Arena is the fastest deathmatch ever made, running in your browser via the open-source
+        ioquake3 engine and OpenArena. You're dropped into the arena with bots. Frag everything. Highest
+        score when the clock runs out wins the round.</p>
+      <h4>Controls</h4>
+      <ul>
+        <li><kbd>Click</kbd> the arena once to grab your mouse</li>
+        <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · <kbd>Space</kbd> jump · mouse aims, <kbd>LMB</kbd> fires</li>
+        <li>Number keys <kbd>1</kbd>–<kbd>9</kbd> switch weapons — grab them off the floor</li>
+        <li><kbd>Tab</kbd> shows the scoreboard · <kbd>Esc</kbd> opens the menu</li>
+      </ul>
+      <h4>Scoring</h4>
+      <ul>
+        <li>Frag a bot — <b>+1</b> · get fragged — nothing · fall in the void — <b>−1</b></li>
+        <li>Your run posts automatically when the match ends. Best run of the round counts.</li>
+        <li>Add a wallet to your profile to appear on the paid leaderboard.</li>
+      </ul>
+      <h4>Tips</h4>
+      <ul>
+        <li>Never stop moving. Strafe-jump to build speed.</li>
+        <li>Control the armor and the rocket launcher — the map cycles them on timers.</li>
+        <li>The railgun rewards patience; the lightning gun rewards tracking.</li>
+      </ul>
+    </div>
   </div>
 </div>
 
