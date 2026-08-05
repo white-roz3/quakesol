@@ -50,7 +50,7 @@ header {
   background: url("/web/assets/ui-bar.png") center / 100% 100% no-repeat,
     linear-gradient(180deg, rgba(16, 19, 24, .96), rgba(8, 10, 13, .96));
 }
-.mark { height: 32px; width: 32px; color: var(--red);
+.mark { height: 34px; width: 36px; object-fit: contain;
   filter: drop-shadow(0 0 8px var(--red-glow)); }
 .wordmark {
   font-family: "Michroma", sans-serif; font-size: 19px; letter-spacing: .18em;
@@ -103,7 +103,7 @@ main { position: relative; z-index: 10; }
   display: flex; align-items: center; justify-content: center; position: relative;
   margin-right: 30px; min-height: 380px;
 }
-.sigil svg { width: 66%; aspect-ratio: 1; color: var(--red);
+.sigil img { width: 70%; object-fit: contain;
   filter: drop-shadow(0 0 22px var(--red-glow)); }
 .tag {
   display: flex; align-items: center; gap: 12px;
@@ -234,16 +234,10 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 </style>
 </head>
 <body>
-<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
-  <symbol id="trident" viewBox="0 0 100 100">
-    <path fill="currentColor" d="M16 12 C17 48 30 72 50 77 C70 72 83 48 84 12 C81 42 68 62 50 64 C32 62 19 42 16 12 Z"/>
-    <path fill="currentColor" d="M50 8 C51.6 22 54.3 38 54.8 52 C54.3 62 51.6 80 50 98 C48.4 80 45.7 62 45.2 52 C45.7 38 48.4 22 50 8 Z"/>
-  </symbol>
-</svg>
 <div class="backdrop"></div>
 
 <header>
-  <svg class="mark"><use href="#trident"/></svg>
+  <img class="mark" src="/web/assets/trident.png" alt="">
   <div class="wordmark">Quakesol</div>
   <div class="round-pill offline" id="round-pill"><span class="dot"></span><span id="round-text">LOCAL MODE</span></div>
   <button class="chip" id="ca-chip" style="display:none" title="Copy contract address">CA <b id="ca-short"></b> ⧉</button>
@@ -259,7 +253,7 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   <section class="screen active" id="screen-identify">
     <div class="panel chromeframe">
       <div class="inner">
-        <div class="sigil"><svg viewBox="0 0 100 100"><use href="#trident"/></svg></div>
+        <div class="sigil"><img src="/web/assets/trident.png" alt=""></div>
         <div class="gate">
           <div class="tag">Identify Yourself</div>
           <h2>Pick a callsign.<br><span>Wallet optional.</span></h2>
