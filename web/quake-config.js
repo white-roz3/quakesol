@@ -21,15 +21,11 @@ window.QUAKE_ENGINE = "/ioq3/build/Release/ioquake3.html";
 // Match settings for a scored run.
 window.QUAKE_MATCH = {
   basegame: "baseoa",
-  map: "oa_dm1",
+  map: "oa_dm5",       // larger arena; oa_dm1 is a cramped duel map
   timelimit: 5,        // minutes
-  fraglimit: 30,
-  // Valid names: see scripts/bots.txt inside the OA pk3s (Angelyss, Sarge,
-  // Gargoyle, Kyonshi, Merman, Major, Grunt, Ayumi, Penguin, Skelebot, ...).
-  // "random" is NOT supported by OpenArena's gamecode.
-  bots: [
-    { name: "Sarge", skill: 3 },
-    { name: "Gargoyle", skill: 3 },
-    { name: "Angelyss", skill: 4 },
-  ],
+  fraglimit: 50,
+  // Total players in the arena including you. The engine keeps the count
+  // topped up (bot_minplayers), so the match refills as bots are fragged.
+  players: 6,
+  botSkill: 3,         // 1 (easy) .. 5 (nightmare)
 };

@@ -3,9 +3,36 @@
 <style>
 html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: rgb(0, 0, 0); display:flex; align-items: center; justify-content: center; }
 canvas { max-width: 100%; max-height: 100%; min-width: 100%; min-height: 100%; object-fit: contain; }
+
+/* ---- touch controls (mobile only) ---- */
+#touchui { position: fixed; inset: 0; z-index: 20; touch-action: none; user-select: none;
+  -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+#touchui[hidden] { display: none; }
+#tstick { position: absolute; width: 132px; height: 132px; margin: -66px 0 0 -66px;
+  border: 2px solid rgba(255, 60, 40, .5); border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,40,20,.10), rgba(0,0,0,.28));
+  opacity: 0; transition: opacity .12s; pointer-events: none; }
+#tthumb { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px;
+  border-radius: 50%; border: 2px solid rgba(255, 90, 70, .85);
+  background: radial-gradient(circle at 40% 35%, rgba(255,120,90,.55), rgba(180,20,10,.45)); }
+.tbtn { position: absolute; border-radius: 50%; display: grid; place-items: center;
+  font: 600 12px/1 "Helvetica Neue", Arial, sans-serif; letter-spacing: .12em; color: #ffd9d2;
+  border: 2px solid rgba(255, 70, 45, .55); background: rgba(30, 8, 5, .38);
+  text-shadow: 0 0 8px rgba(255,60,30,.7); }
+.tbtn:active, .tbtn.on { background: rgba(255, 50, 25, .45); border-color: #ff7b5a; color: #fff; }
+#tfire { right: 26px; bottom: 30px; width: 96px; height: 96px; font-size: 14px; }
+#tjump { right: 136px; bottom: 58px; width: 72px; height: 72px; }
+#tweap { right: 40px; bottom: 140px; width: 64px; height: 64px; font-size: 11px; }
 </style>
 
 <canvas id=canvas></canvas>
+
+<div id=touchui hidden>
+  <div id=tstick><div id=tthumb></div></div>
+  <div class=tbtn id=tfire>FIRE</div>
+  <div class=tbtn id=tjump>JUMP</div>
+  <div class=tbtn id=tweap>WPN</div>
+</div>
 
 <div id=q3events style="position:fixed;top:8px;right:8px;max-width:340px;max-height:45%;overflow-y:auto;background:rgba(0,0,0,.7);color:#7fff7f;font:11px monospace;padding:6px;z-index:10;pointer-events:none;white-space:pre-wrap;"></div>
 
@@ -16,6 +43,126 @@ canvas { max-width: 100%; max-height: 100%; min-width: 100%; min-height: 100%; o
 window.Q3_EVENTS = [];
 const Q3_EMBEDDED = window.parent !== window;
 if (Q3_EMBEDDED) document.getElementById('q3events').style.display = 'none';
+
+// Touch controls. The engine takes keyboard/mouse only, so the on-screen pad
+// synthesises those events: a movable analog stick drives WASD, dragging the
+// right side feeds relative mouse motion (SDL is in relative mouse mode), and
+// the buttons map to attack / jump / weapnext.
+(() => {
+  const forced = new URLSearchParams(location.search).get('touch');
+  if (forced !== '1' && (forced === '0' || !(matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window))) return;
+  const ui = document.getElementById('touchui');
+  const stick = document.getElementById('tstick');
+  const thumb = document.getElementById('tthumb');
+  const canvas = document.getElementById('canvas');
+  ui.hidden = false;
+
+  const KEYS = {
+    forward: ['KeyW', 'w', 87], back: ['KeyS', 's', 83],
+    left: ['KeyA', 'a', 65], right: ['KeyD', 'd', 68],
+    jump: ['Space', ' ', 32],
+  };
+  const held = {};
+  const setKey = (name, on) => {
+    if (!!held[name] === !!on) return;
+    held[name] = on;
+    const [code, key, keyCode] = KEYS[name];
+    const type = on ? 'keydown' : 'keyup';
+    for (const target of [canvas, document, window]) {
+      target.dispatchEvent(new KeyboardEvent(type, {
+        code, key, keyCode, which: keyCode, bubbles: true, cancelable: true,
+      }));
+    }
+  };
+
+  let mouseX = innerWidth / 2, mouseY = innerHeight / 2;
+  const look = (dx, dy) => {
+    mouseX += dx; mouseY += dy;
+    canvas.dispatchEvent(new MouseEvent('mousemove', {
+      clientX: mouseX, clientY: mouseY, movementX: dx, movementY: dy,
+      bubbles: true, cancelable: true,
+    }));
+  };
+  const mouseBtn = (down) => canvas.dispatchEvent(new MouseEvent(down ? 'mousedown' : 'mouseup', {
+    button: 0, buttons: down ? 1 : 0, clientX: mouseX, clientY: mouseY,
+    bubbles: true, cancelable: true,
+  }));
+
+  const RADIUS = 58, DEADZONE = 0.28, LOOK_SCALE = 1.4;
+  let moveId = null, lookId = null, baseX = 0, baseY = 0, lastX = 0, lastY = 0;
+  let tapX = 0, tapY = 0, tapAt = 0;
+  const buttons = new Map(); // touch identifier -> element
+
+  const applyStick = (dx, dy) => {
+    const len = Math.hypot(dx, dy);
+    const clamped = len > RADIUS ? RADIUS / len : 1;
+    thumb.style.transform = `translate(${dx * clamped}px, ${dy * clamped}px)`;
+    const nx = dx / RADIUS, ny = dy / RADIUS;
+    const live = Math.hypot(nx, ny) > DEADZONE;
+    setKey('forward', live && ny < -DEADZONE);
+    setKey('back', live && ny > DEADZONE);
+    setKey('left', live && nx < -DEADZONE);
+    setKey('right', live && nx > DEADZONE);
+  };
+  const releaseStick = () => {
+    moveId = null;
+    stick.style.opacity = 0;
+    thumb.style.transform = '';
+    ['forward', 'back', 'left', 'right'].forEach((k) => setKey(k, false));
+  };
+
+  const pressButton = (el, on) => {
+    el.classList.toggle('on', on);
+    if (el.id === 'tfire') mouseBtn(on);
+    else if (el.id === 'tjump') setKey('jump', on);
+    else if (el.id === 'tweap' && on && window.Q3Console) window.Q3Console('weapnext');
+  };
+
+  ui.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      const el = document.elementFromPoint(t.clientX, t.clientY);
+      const btn = el && el.closest && el.closest('.tbtn');
+      if (btn) { buttons.set(t.identifier, btn); pressButton(btn, true); continue; }
+      if (t.clientX < innerWidth * 0.45 && moveId === null) {
+        moveId = t.identifier; baseX = t.clientX; baseY = t.clientY;
+        stick.style.left = `${baseX}px`; stick.style.top = `${baseY}px`; stick.style.opacity = 1;
+        applyStick(0, 0);
+      } else if (lookId === null) {
+        lookId = t.identifier; lastX = t.clientX; lastY = t.clientY;
+        tapX = t.clientX; tapY = t.clientY; tapAt = performance.now();
+      }
+    }
+  }, { passive: false });
+
+  ui.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier === moveId) applyStick(t.clientX - baseX, t.clientY - baseY);
+      else if (t.identifier === lookId) {
+        look((t.clientX - lastX) * LOOK_SCALE, (t.clientY - lastY) * LOOK_SCALE);
+        lastX = t.clientX; lastY = t.clientY;
+      }
+    }
+  }, { passive: false });
+
+  const endTouch = (e) => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (buttons.has(t.identifier)) { pressButton(buttons.get(t.identifier), false); buttons.delete(t.identifier); }
+      else if (t.identifier === moveId) releaseStick();
+      else if (t.identifier === lookId) {
+        // a short tap that barely moved is a click, so in-game menus stay usable
+        const quick = performance.now() - tapAt < 260;
+        const still = Math.hypot(t.clientX - tapX, t.clientY - tapY) < 12;
+        if (quick && still) { mouseX = t.clientX; mouseY = t.clientY; mouseBtn(true); setTimeout(() => mouseBtn(false), 40); }
+        lookId = null;
+      }
+    }
+  };
+  ui.addEventListener('touchend', endTouch, { passive: false });
+  ui.addEventListener('touchcancel', endTouch, { passive: false });
+})();
 window.Q3Bridge = {
   onEvent(e) {
     window.Q3_EVENTS.push(e);

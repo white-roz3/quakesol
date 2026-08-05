@@ -7,7 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Michroma&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-<script src="/web/quake-config.js"></script>
 <style>
 :root {
   --red: #d31212;
@@ -192,6 +191,19 @@ main { position: relative; z-index: 10; }
 #submit-status.err { color: #ff6a5a; }
 .debrief .go { margin-top: 16px; }
 
+/* ---------- rotate gate (mobile portrait) ---------- */
+#rotate { position: fixed; inset: 0; z-index: 200; display: none; place-items: center;
+  background: #05060a; text-align: center; padding: 30px; }
+#rotate.on { display: grid; }
+#rotate .phone { width: 74px; height: 116px; margin: 0 auto 26px; border: 3px solid var(--chrome);
+  border-radius: 10px; position: relative; animation: tip 1.8s ease-in-out infinite; }
+#rotate .phone::after { content: ""; position: absolute; left: 50%; bottom: 7px; width: 22px; height: 3px;
+  background: var(--chrome-lo); transform: translateX(-50%); border-radius: 2px; }
+@keyframes tip { 0%, 45% { transform: rotate(0); } 65%, 100% { transform: rotate(-90deg); } }
+#rotate h3 { font-family: "Michroma", sans-serif; font-size: 15px; letter-spacing: .2em;
+  color: var(--red); text-transform: uppercase; margin-bottom: 12px; text-shadow: 0 0 16px var(--red-glow); }
+#rotate p { font-size: 13px; color: var(--mute); letter-spacing: .08em; }
+
 /* ---------- modals ---------- */
 .modal-back { position: fixed; inset: 0; background: rgba(3, 4, 7, .85); backdrop-filter: blur(4px);
   z-index: 100; display: none; place-items: center; padding: 20px; }
@@ -305,6 +317,15 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   </section>
 </main>
 
+<!-- ROTATE GATE -->
+<div id="rotate">
+  <div>
+    <div class="phone"></div>
+    <h3>Rotate your device</h3>
+    <p>The arena runs in landscape only.</p>
+  </div>
+</div>
+
 <!-- LEADERBOARD MODAL -->
 <div class="modal-back" id="modal-lb">
   <div class="modal chromeframe">
@@ -347,7 +368,11 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 </div>
 
 <script>
-(() => {
+(async () => {
+  // quake-config.js is loaded here rather than via a <script> tag so a stale
+  // copy can never be served from cache — edits take effect on next reload.
+  await import(`/web/quake-config.js?t=${Date.now()}`);
+
   const $ = (id) => document.getElementById(id);
   // API resolution: explicit config wins; localhost dev uses the standalone
   // backend on :4000; anywhere else the API is same-origin (single service).
@@ -355,7 +380,7 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   const API = (window.QUAKE_API || (isLocal ? "http://localhost:4000" : location.origin)).replace(/\/$/, "");
   const M = window.QUAKE_MATCH;
   const test = new URLSearchParams(location.search).get("test") === "1";
-  if (test) { M.timelimit = 1; M.bots = [{ name: "Sarge", skill: 1 }]; }
+  if (test) { M.timelimit = 1; M.players = 3; M.botSkill = 1; }
 
   // ---------- header chips ----------
   if (window.QUAKE_CA) {
@@ -406,7 +431,21 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 
   // ---------- game lifecycle ----------
   const screens = { identify: $("screen-identify"), arena: $("screen-arena"), debrief: $("screen-debrief") };
-  const show = (k) => Object.entries(screens).forEach(([n, el]) => el.classList.toggle("active", n === k));
+  let current = "identify";
+  const show = (k) => {
+    current = k;
+    Object.entries(screens).forEach(([n, el]) => el.classList.toggle("active", n === k));
+    checkOrientation();
+  };
+
+  // the arena needs landscape on touch devices — prompt to rotate otherwise
+  const isTouch = matchMedia("(pointer: coarse)").matches || "ontouchstart" in window;
+  function checkOrientation() {
+    const portrait = innerHeight > innerWidth;
+    $("rotate").classList.toggle("on", isTouch && portrait && current === "arena");
+  }
+  addEventListener("resize", checkOrientation);
+  addEventListener("orientationchange", checkOrientation);
   let run = null; // current run state
 
   $("btn-enter").onclick = () => {
@@ -444,7 +483,13 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   function startMatch(name, wallet) {
     run = { name, wallet, score: 0, deaths: 0, map: M.map, startedAt: Date.now(), botsAdded: false, ended: false };
     startPings(name);
-    const args = `%2btimelimit%20${M.timelimit}%20%2bfraglimit%20${M.fraglimit}%20%2bmap%20${M.map}`;
+    const args = [
+      `%2bset%20bot_minplayers%20${M.players}`,
+      `%2bset%20g_spSkill%20${M.botSkill}`,
+      `%2btimelimit%20${M.timelimit}`,
+      `%2bfraglimit%20${M.fraglimit}`,
+      `%2bmap%20${M.map}`,
+    ].join("%20");
     $("gameframe").src = `${window.QUAKE_ENGINE}?com_basegame=${M.basegame}&args=${args}`;
     $("hud-score").textContent = "0"; $("hud-deaths").textContent = "0";
     $("hud-rank").textContent = "—"; $("hud-map").textContent = M.map;
@@ -464,12 +509,8 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     const e = msg.data.event;
     if (!run || run.ended) return;
     if (e.type === "match_start") {
-      // engine is live: set callsign, spawn the bot roster once
+      // engine is live: set the callsign (bot_minplayers fills the arena)
       frameConsole(`name "${run.name.replace(/[";]/g, "")}"`);
-      if (!run.botsAdded) {
-        run.botsAdded = true;
-        M.bots.forEach((b, i) => setTimeout(() => frameConsole(`addbot ${b.name} ${b.skill}`), 400 * (i + 1)));
-      }
     } else if (e.type === "score") {
       run.score = e.score; run.deaths = e.deaths;
       $("hud-score").textContent = e.score; $("hud-deaths").textContent = e.deaths;
