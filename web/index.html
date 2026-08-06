@@ -329,7 +329,6 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   <img class="mark" src="/web/assets/trident.png" alt="">
   <div class="wordmark">Quakesol</div>
   <div class="round-pill offline" id="round-pill"><span class="dot"></span><span id="round-text">LOCAL MODE</span></div>
-  <span class="chip" id="preload-chip" style="display:none;cursor:default"></span>
   <button class="chip" id="btn-sound" title="Toggle menu music">♪ ON</button>
   <button class="chip" id="ca-chip" style="display:none" title="Copy contract address">CA <b id="ca-short"></b> ⧉</button>
   <a class="chip" id="x-chip" style="display:none" target="_blank" rel="noopener">𝕏 COMMUNITY</a>
@@ -637,14 +636,9 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   // A match takes over: stop competing for bandwidth and let the engine load.
   const stopPreload = () => { if (preload.ctrl) preload.ctrl.abort(); preload.running = false; };
 
-  function showPreload() {
-    const el = $("preload-chip");
-    if (!el) return;
-    if (preload.done) { el.textContent = "ARENA DATA READY ✓"; setTimeout(() => { el.style.display = "none"; }, 4000); return; }
-    if (!preload.total) return;
-    el.style.display = "";
-    el.textContent = `PRELOADING ARENA ${((preload.loaded / preload.total) * 100).toFixed(0)}%`;
-  }
+  // Deliberately silent — the preload is an optimisation, not something the
+  // player should have to watch. Progress is still tracked for stopPreload().
+  function showPreload() {}
 
   if (window.QUAKE_PRELOAD === "load") setTimeout(startPreload, 1200);
 
