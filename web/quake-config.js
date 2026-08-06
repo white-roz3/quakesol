@@ -28,11 +28,14 @@ window.QUAKE_PRELOAD = "load";
 // Match settings for a scored run.
 window.QUAKE_MATCH = {
   basegame: "baseoa",
-  map: "oa_dm5",       // larger arena; oa_dm1 is a cramped duel map
+  // 10 players needs a map with enough spawn points or they telefrag each
+  // other on respawn. Spawn counts: sleekgrinder 23, oa_koth1 17,
+  // oa_shine 13, kaos2 12, oa_koth2 9, oa_dm5 only 6.
+  map: "sleekgrinder",
   timelimit: 5,        // minutes
   fraglimit: 50,
   // Total players in the arena including you. The engine keeps the count
   // topped up (bot_minplayers), so the match refills as bots are fragged.
-  players: 6,
+  players: 10,
   botSkill: 3,         // 1 (easy) .. 5 (nightmare)
 };
