@@ -438,8 +438,8 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     <div class="inner">
       <header2><h3>How to Play</h3><button class="x" data-close="modal-howto">CLOSE ✕</button></header2>
       <p>Quake III Arena is the fastest deathmatch ever made, running in your browser via the open-source
-        ioquake3 engine and OpenArena. You're dropped into the arena with bots. Frag everything. Highest
-        score when the clock runs out wins the round.</p>
+        ioquake3 engine and OpenArena. Ten fighters drop into the arena at once. Frag everything.
+        Whoever is on top when the clock runs out takes the match.</p>
       <h4>Controls</h4>
       <ul>
         <li><kbd>Click</kbd> the arena once to grab your mouse</li>
@@ -477,7 +477,7 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   const API = (window.QUAKE_API || (isLocal ? "http://localhost:4000" : location.origin)).replace(/\/$/, "");
   const M = window.QUAKE_MATCH;
   const test = new URLSearchParams(location.search).get("test") === "1";
-  if (test) { M.timelimit = 1; M.players = 3; M.botSkill = 1; }
+  if (test) { M.timelimit = 1; M.players = 3; M.skill = 1; }
 
   // ---------- header chips ----------
   if (window.QUAKE_CA) {
@@ -837,7 +837,7 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     stopPreload();   // the engine's loader takes over from here
     const args = [
       `%2bset%20bot_minplayers%20${M.players}`,
-      `%2bset%20g_spSkill%20${M.botSkill}`,
+      `%2bset%20g_spSkill%20${M.skill}`,
       `%2btimelimit%20${M.timelimit}`,
       `%2bfraglimit%20${M.fraglimit}`,
       `%2bmap%20${M.map}`,

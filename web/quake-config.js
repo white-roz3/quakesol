@@ -33,8 +33,8 @@ window.QUAKE_MATCH = {
   map: "wrackdm17",
   timelimit: 5,        // minutes
   fraglimit: 50,
-  // Total players in the arena including you. The engine keeps the count
-  // topped up (bot_minplayers), so the match refills as bots are fragged.
+  // Total fighters in the arena including you. The engine keeps the count
+  // topped up, so the arena refills as players are fragged.
   players: 10,
-  botSkill: 3,         // 1 (easy) .. 5 (nightmare)
+  skill: 3,            // opponent skill, 1 (easy) .. 5 (nightmare)
 };
