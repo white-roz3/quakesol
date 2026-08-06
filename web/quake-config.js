@@ -18,6 +18,13 @@ window.QUAKE_X = "";
 // Path to the built ioquake3 Emscripten shell, relative to this page.
 window.QUAKE_ENGINE = "/ioq3/build/Release/ioquake3.html";
 
+// When to start pulling the ~400MB of game data into the browser cache:
+//   "load"     — as soon as the site opens (fastest to play, most bandwidth)
+//   "identify" — once a nametag is entered, i.e. the player intends to play
+//   "off"      — only when a match starts
+// Skipped automatically on data-saver and 2G connections either way.
+window.QUAKE_PRELOAD = "load";
+
 // Match settings for a scored run.
 window.QUAKE_MATCH = {
   basegame: "baseoa",

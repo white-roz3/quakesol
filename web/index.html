@@ -329,6 +329,7 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   <img class="mark" src="/web/assets/trident.png" alt="">
   <div class="wordmark">Quakesol</div>
   <div class="round-pill offline" id="round-pill"><span class="dot"></span><span id="round-text">LOCAL MODE</span></div>
+  <span class="chip" id="preload-chip" style="display:none;cursor:default"></span>
   <button class="chip" id="btn-sound" title="Toggle menu music">♪ ON</button>
   <button class="chip" id="ca-chip" style="display:none" title="Copy contract address">CA <b id="ca-short"></b> ⧉</button>
   <a class="chip" id="x-chip" style="display:none" target="_blank" rel="noopener">𝕏 COMMUNITY</a>
@@ -588,6 +589,65 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   }
   const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+  // ---------- background preload ----------
+  // The game data is the same whichever arena is chosen, so pull it into the
+  // browser cache while the player is still in the lobby. The engine's own
+  // loader then finds everything cached and starts almost immediately.
+  const preload = { loaded: 0, total: 0, running: false, done: false, ctrl: null };
+
+  function preloadAllowed() {
+    const c = navigator.connection || {};
+    if (c.saveData) return false;                            // respect Data Saver
+    if (/(^|-)2g$/.test(c.effectiveType || "")) return false; // don't monopolise a slow link
+    return true;
+  }
+
+  async function startPreload() {
+    if (preload.running || preload.done || !preloadAllowed()) return;
+    preload.running = true;
+    preload.ctrl = new AbortController();
+    const base = window.QUAKE_ENGINE.replace(/[^/]+$/, "");
+    try {
+      const cfg = await fetch(`${base}ioquake3-config.json`, { signal: preload.ctrl.signal }).then(r => r.json());
+      const files = (cfg[M.basegame] || {}).files || [];
+      const sizes = await Promise.all(files.map(f =>
+        fetch(new URL(f.src, location.origin + base), { method: "HEAD", signal: preload.ctrl.signal })
+          .then(r => +r.headers.get("content-length") || 0).catch(() => 0)));
+      preload.total = sizes.reduce((a, b) => a + b, 0);
+      showPreload();
+      for (let i = 0; i < files.length; i++) {
+        const res = await fetch(new URL(files[i].src, location.origin + base), { signal: preload.ctrl.signal });
+        if (!res.ok || !res.body) continue;
+        // Stream and discard: the point is to populate the HTTP cache, not to
+        // hold 400MB of game data in the lobby's memory.
+        const reader = res.body.getReader();
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          preload.loaded += value.length;
+          showPreload();
+        }
+      }
+      preload.done = true;
+      showPreload();
+    } catch { /* aborted, offline, or a bad response — the engine will fetch normally */ }
+    preload.running = false;
+  }
+
+  // A match takes over: stop competing for bandwidth and let the engine load.
+  const stopPreload = () => { if (preload.ctrl) preload.ctrl.abort(); preload.running = false; };
+
+  function showPreload() {
+    const el = $("preload-chip");
+    if (!el) return;
+    if (preload.done) { el.textContent = "ARENA DATA READY ✓"; setTimeout(() => { el.style.display = "none"; }, 4000); return; }
+    if (!preload.total) return;
+    el.style.display = "";
+    el.textContent = `PRELOADING ARENA ${((preload.loaded / preload.total) * 100).toFixed(0)}%`;
+  }
+
+  if (window.QUAKE_PRELOAD === "load") setTimeout(startPreload, 1200);
+
   // ---------- control settings ----------
   // Stored locally and pushed into the engine at the start of every match.
   const DEFAULT_CONTROLS = {
@@ -816,6 +876,7 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     localStorage.setItem("qs_name", name);
     localStorage.setItem("qs_wallet", wallet);
     player = { name, wallet };
+    if (window.QUAKE_PRELOAD === "identify") startPreload();
     openCampaign();
   };
 
@@ -892,6 +953,7 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   // the device is actually in landscape.
   function bootEngine() {
     pendingBoot = false;
+    stopPreload();   // the engine's loader takes over from here
     const a = run.arena;
     // campaign arenas bring their own bot roster and frag limit; a quick match
     // just fills the arena with bot_minplayers on the configured map.
