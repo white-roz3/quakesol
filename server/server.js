@@ -51,18 +51,31 @@ db.exec(`
     created_at INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_runs_round ON runs(round);
-
 `);
+
+// Older databases predate the win column; add it in place rather than losing
+// the existing run history to a rebuild.
+if (!db.prepare("PRAGMA table_info(runs)").all().some((c) => c.name === "won")) {
+  db.exec("ALTER TABLE runs ADD COLUMN won INTEGER NOT NULL DEFAULT 0");
+}
 
 const insertRun = db.prepare(`
-  INSERT INTO runs (round, identity, name, wallet, score, deaths, map, duration_ms, ip, created_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO runs (round, identity, name, wallet, score, deaths, map, duration_ms, won, ip, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
+// Ranking: most match wins, then kill/death ratio. Deaths are floored at 1 so a
+// flawless run divides by one instead of by zero.
 const bestPerIdentity = db.prepare(`
-  SELECT name, wallet, MAX(score) AS score, MIN(deaths) AS deaths, COUNT(*) AS runs
+  SELECT MAX(name) AS name,
+         MAX(wallet) AS wallet,
+         SUM(won) AS wins,
+         SUM(score) AS frags,
+         SUM(deaths) AS deaths,
+         ROUND(CAST(SUM(score) AS REAL) / MAX(SUM(deaths), 1), 2) AS kd,
+         COUNT(*) AS runs
   FROM runs WHERE round = ?
   GROUP BY identity
-  ORDER BY score DESC, deaths ASC, MIN(created_at) ASC
+  ORDER BY wins DESC, kd DESC, frags DESC, MIN(created_at) ASC
   LIMIT 50
 `);
 
@@ -258,7 +271,8 @@ const server = createServer(async (req, res) => {
 
       const identity = wallet ?? `name:${name.toLowerCase()}`;
       const round = currentRound();
-      insertRun.run(round, identity, name, wallet, score, deaths, map, Math.round(duration), ip, Date.now());
+      insertRun.run(round, identity, name, wallet, score, deaths, map, Math.round(duration),
+                    b.won === true ? 1 : 0, ip, Date.now());
 
       pings.set(name, Date.now());
       return json(res, 201, { ok: true, round });

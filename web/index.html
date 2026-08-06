@@ -449,9 +449,10 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
       </ul>
       <h4>Scoring</h4>
       <ul>
-        <li>Frag a bot — <b>+1</b> · get fragged — nothing · fall in the void — <b>−1</b></li>
-        <li>Your run posts automatically when the match ends. Best run of the round counts.</li>
-        <li>Add a wallet to your profile to appear on the paid leaderboard.</li>
+        <li>Ten players, five minutes, one arena — <b>The Longest Yard</b>.</li>
+        <li>Finish the match in first place to take the <b>win</b>. Falling into the void costs you a frag, so watch your step.</li>
+        <li>The board ranks by <b>wins</b> first, and settles ties on <b>kill/death ratio</b>.</li>
+        <li>Every match posts automatically. Add a wallet to appear on the paid board.</li>
       </ul>
       <h4>Tips</h4>
       <ul>
@@ -519,8 +520,11 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     try {
       const rows = await fetch(`${API}/api/leaderboard`).then(r => r.json());
       if (!rows.length) { $("lb-body").innerHTML = `<div class="lb-empty">NO RUNS YET THIS ROUND — BE FIRST</div>`; return; }
-      $("lb-body").innerHTML = `<table class="lb"><tr><th>#</th><th>Nametag</th><th>Wallet</th><th style="text-align:right">Frags</th></tr>` +
-        rows.map((r, i) => `<tr><td class="rank">${String(i + 1).padStart(2, "0")}</td><td>${esc(r.name)}</td><td>${r.wallet ? esc(r.wallet.slice(0, 4) + "…" + r.wallet.slice(-4)) : "—"}</td><td class="score">${r.score}</td></tr>`).join("") + `</table>`;
+      $("lb-body").innerHTML = `<table class="lb"><tr><th>#</th><th>Nametag</th><th>Wallet</th>` +
+        `<th style="text-align:right">Wins</th><th style="text-align:right">K/D</th></tr>` +
+        rows.map((r, i) => `<tr><td class="rank">${String(i + 1).padStart(2, "0")}</td><td>${esc(r.name)}</td>` +
+          `<td>${r.wallet ? esc(r.wallet.slice(0, 4) + "…" + r.wallet.slice(-4)) : "—"}</td>` +
+          `<td class="score">${r.wins || 0}</td><td class="score">${(r.kd ?? 0).toFixed(2)}</td></tr>`).join("") + `</table>`;
     } catch { $("lb-body").innerHTML = `<div class="lb-empty">LEADERBOARD UNREACHABLE</div>`; }
   }
   const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -875,6 +879,7 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
       $("hud-rank").textContent = e.rank;
     } else if (e.type === "match_end") {
       run.ended = true; run.score = e.score; run.deaths = e.deaths; run.map = e.map;
+      run.won = e.rank === 1;   // finished first
       finishRun(e);
     }
   });
@@ -884,6 +889,7 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     $("d-deaths").textContent = e.deaths;
     $("d-net").textContent = e.score - e.deaths;
     $("d-map").textContent = e.map;
+    document.querySelector(".debrief-title").textContent = run.won ? "// Victory" : "// Match Report";
     show("debrief");
     $("gameframe").src = "about:blank";
     stopPings();
@@ -895,7 +901,7 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: run.name, wallet: run.wallet || null, score: e.score, deaths: e.deaths,
-          map: e.map,
+          map: e.map, won: !!run.won,
           serverTime: e.serverTime, startedAt: run.startedAt, endedAt: Date.now(),
         }),
       });
