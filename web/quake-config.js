@@ -10,7 +10,7 @@
 window.QUAKE_API = "";
 
 // Token contract address. Leave "" to hide the CA chip.
-window.QUAKE_CA = "";
+window.QUAKE_CA = "9CcLs3XRJB3KnjBgFf66iTpNhHMGHUYCwUYLuT69pump";
 
 // X / community link. Leave "" to hide.
 window.QUAKE_X = "";

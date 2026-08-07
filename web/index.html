@@ -307,7 +307,7 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
         <div class="sigil"><img src="/web/assets/trident.png" alt=""></div>
         <div class="gate">
           <div class="tag">Identify Yourself</div>
-          <h2>Pick a nametag.<br><span>Wallet optional.</span></h2>
+          <h2>Pick a nametag.</h2>
           <div class="field">
             <label for="f-name">Nametag</label>
             <input id="f-name" maxlength="24" spellcheck="false" autocomplete="off" placeholder="Enter your nametag">
@@ -739,6 +739,44 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     engineControlCommands().forEach(frameConsole);
   };
 
+  // ---------- opponent roster ----------
+  // Opponents are spawned explicitly with a display name so the arena reads
+  // differently every match instead of showing the same stock line-up.
+  const CALLSIGNS = [
+    "Vulture","Nullpoint","Deadbolt","Ratchet","Cinder","Havoc","Drifter","Static",
+    "Verdict","Kilowatt","Marrow","Tinder","Gravel","Halcyon","Bandsaw","Nocturne",
+    "Pitfall","Quarry","Redline","Sable","Thresher","Undertow","Voltage","Warden",
+    "Xenon","Zealot","Ember","Fracture","Hollow","Jetsam","Krypton","Lockjaw",
+    "Mantis","Nomad","Overkill","Pylon","Quiver","Riptide","Splinter","Torque",
+    "Uplink","Vandal","Whiplash","Axiom","Cobalt","Dynamo","Echelon","Flint",
+    "Gauntlet","Harrow","Ironclad","Jackknife","Kestrel","Lantern","Midnight","Nitro",
+  ];
+  // Character models shipped with the game — picked at random for variety too.
+  const CHARACTERS = [
+    "angelyss","dark","murielle","nekoyss","tanisha","rai","arachna","assassin",
+    "ghost","ayumi","jenna","beret","headcrash","morgan","gargoyle","broadklin",
+    "kyonshi","liz","major","merman","neko","penguin","sarge","andriy",
+    "grism","sergei","skelebot","metalbot","grunt","sorceress","tony",
+  ];
+  const shuffled = (arr) => {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+  function spawnOpponents() {
+    const count = Math.max(0, (M.players || 10) - 1);
+    const names = shuffled(CALLSIGNS).slice(0, count);
+    const chars = shuffled(CHARACTERS);
+    names.forEach((name, i) => {
+      const safe = name.replace(/[^A-Za-z0-9_-]/g, "");
+      // staggered: the engine drops bots queued in the same frame
+      setTimeout(() => frameConsole(`addbot ${chars[i % chars.length]} ${M.skill} free 0 ${safe}`), 300 * (i + 1));
+    });
+  }
+
   // ---------- game lifecycle ----------
   let player = { name: localStorage.getItem("qs_name") || "", wallet: localStorage.getItem("qs_wallet") || "" };
   const screens = { identify: $("screen-identify"), arena: $("screen-arena"), debrief: $("screen-debrief") };
@@ -836,7 +874,7 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     pendingBoot = false;
     stopPreload();   // the engine's loader takes over from here
     const args = [
-      `%2bset%20bot_minplayers%20${M.players}`,
+      `%2bset%20bot_minplayers%200`,
       `%2bset%20g_spSkill%20${M.skill}`,
       `%2btimelimit%20${M.timelimit}`,
       `%2bfraglimit%20${M.fraglimit}`,
@@ -858,9 +896,12 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     show("arena");
   }
 
-  const frameConsole = (cmd) => {
+  // Commands issued before the engine finishes booting used to be dropped
+  // silently, which quietly cost us arena opponents. Retry briefly instead.
+  const frameConsole = (cmd, attempt = 0) => {
     const w = $("gameframe").contentWindow;
     if (w && w.Q3Console) { w.Q3Console(cmd); return true; }
+    if (attempt < 20) setTimeout(() => frameConsole(cmd, attempt + 1), 250);
     return false;
   };
 
@@ -869,10 +910,11 @@ table.lb { width: 100%; border-collapse: collapse; font-size: 13.5px; }
     const e = msg.data.event;
     if (!run || run.ended) return;
     if (e.type === "match_start") {
-      // engine is live: set the callsign (bot_minplayers fills the arena)
+      // engine is live: name the player, apply their settings, fill the arena
       frameConsole(`name "${run.name.replace(/[";]/g, "")}"`);
       engineControlCommands().forEach(frameConsole);   // player's key/aim settings
       pushTouchSettings();
+      if (!run.rosterSpawned) { run.rosterSpawned = true; spawnOpponents(); }
     } else if (e.type === "score") {
       run.score = e.score; run.deaths = e.deaths;
       $("hud-score").textContent = e.score; $("hud-deaths").textContent = e.deaths;
